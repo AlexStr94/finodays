@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user
-from services.db import card_crud, user_crud
+from services.db import card_crud, cashback_crud, user_crud
+from services.cashback import get_card_cashback
 from db.db import get_session
 from schemas import base as schemas
 from models import base as models
@@ -32,7 +33,7 @@ async def get_access_token(
     cards: List[schemas.LiteCard]= get_cards(user.gosuslugi_id)
 
     for card in cards:
-        await card_crud.get_or_create(
+        card_id_db: models.Card = await card_crud.get_or_create(
             db=db,
             obj_in=schemas.Card(
                 user_id=user.id,
@@ -40,6 +41,20 @@ async def get_access_token(
                 card_number=card.card_number
             )
         )
+
+        cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_id_db)
+
+        if cashbacks:
+            for cashback in cashbacks:
+                cashback_id_db = await cashback_crud.get_or_create(
+                    db=db,
+                    obj_in=cashback
+                )
+
+                # создавать кешбек конкретного пользователя
+
+
+
 
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)

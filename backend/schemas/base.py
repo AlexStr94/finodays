@@ -31,3 +31,8 @@ class LiteCard(BaseModel):
 
 class Card(LiteCard):
     user_id: int
+
+
+class Cashback(BaseModel):
+    product_type: str
+    value: int

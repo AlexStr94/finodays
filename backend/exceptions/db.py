@@ -4,3 +4,7 @@ class UserAlreadyExist(Exception):
 
 class CardAlreadyExist(Exception):
     pass
+
+
+class CashbackAlreadyExist(Exception):
+    pass

@@ -115,6 +115,42 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
             card = await self.create(db, obj_in)
         
         return card
+    
+
+class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas.Cashback]):
+    async def create(self, db: AsyncSession, obj_in: schemas.Cashback) -> ModelType:
+        obj_in_data: dict = jsonable_encoder(obj_in)
+        db_obj = self._model(**obj_in_data)
+        db.add(db_obj)
+        try:
+            await db.commit()
+        except IntegrityError as e:
+            raise exceptions.CashbackAlreadyExist
+        await db.refresh(db_obj)
+        return db_obj
+    
+    async def get(self, db: AsyncSession, product_type: str, value: int) -> ModelType:
+        statement = select(self._model) \
+            .where(
+                self._model.product_type == product_type,
+                self._model.value == value,
+            )
+        results = await db.execute(statement=statement)
+        return results.scalar_one_or_none()
+    
+    async def get_or_create(self, db: AsyncSession, obj_in: schemas.Cashback) -> ModelType:
+        obj_in_data: dict = jsonable_encoder(obj_in)
+        cashback: models.Cashback | None = await self.get(
+            db,
+            product_type=obj_in_data.get('product_type'),
+            value=obj_in_data.get('value')
+        )
+        if not cashback:
+            cashback = await self.create(db, obj_in)
+        
+        return cashback
+
 
 user_crud = RepositoryUser(models.User)
 card_crud = RepositoryCard(models.Card)
+cashback_crud = RepositoryCashback(models.Cashback)
