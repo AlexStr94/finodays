@@ -1,4 +1,5 @@
 from datetime import date
+from typing import List
 from pydantic import BaseModel
 
 
@@ -44,3 +45,14 @@ class UserCashback(BaseModel):
     cashback_id: int
     month: date
     status: bool
+
+
+class CardWithCashback(BaseModel):
+    bank: str
+    last_four_digits: str
+    cashback: List[Cashback] | None # если кешбек не выбран или не может быть выбран
+    can_choose: bool
+
+
+class CardList(BaseModel):
+    cards: List[CardWithCashback]

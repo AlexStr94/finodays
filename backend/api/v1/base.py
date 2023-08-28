@@ -81,7 +81,7 @@ async def get_access_token(
     status_code=status.HTTP_200_OK,
     description='Получение списка карт пользователя с кешбеком'
 )
-async def get_files_list(
+async def get_cards_list(
     current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
     db: AsyncSession = Depends(get_session),
 ):
@@ -89,4 +89,7 @@ async def get_files_list(
         в заголовке запроса  необходимо указать токен:
         - Authorization: Bearer <token>
     """
-    pass
+    user: models.User = await user_crud.get(db, current_user.gosuslugi_id)
+
+    cards = await card_crud.get_multi(db, user_id=user.id)
+    return cards

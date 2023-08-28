@@ -1,5 +1,4 @@
-from datetime import date
-from typing import Generic, Type, TypeVar
+from typing import Generic, List, Type, TypeVar
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +11,7 @@ from db.db import Base
 from exceptions import db as exceptions
 from models import base as models
 from schemas import base as schemas
+from .cashback import can_choose_cashback
 
 
 class Repository:
@@ -78,19 +78,6 @@ class RepositoryUser(RepositoryDB[models.User, schemas.GosuslugiUser, schemas.Go
         return user
     
 
-class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
-    def __init__(self, model: Type[ModelType]):
-        self._model = model
-
-    async def create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
-        db_obj = self._model(**obj_in_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
-    
-
 class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
     async def create(self, db: AsyncSession, obj_in: schemas.Card) -> ModelType:
         obj_in_data: dict = jsonable_encoder(obj_in)
@@ -115,6 +102,35 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
         
         return card
     
+    async def get_multi(self,
+        db: AsyncSession,
+        user_id: int
+    ) -> List[schemas.CardWithCashback]:
+        statement = select(self._model).where(self._model.user_id == user_id)
+        results = await db.execute(statement=statement)
+        card_query = results.scalars()
+        cards: list = []
+        for card in card_query:
+            user_cashbacks = await user_cashback_crud.get_multi(db, card_id=card.id)
+            cashbacks: list = []
+            for cashback in user_cashbacks:
+                cashback: models.Cashback = await cashback_crud.get(db, id=cashback.cashback_id)
+                cashbacks.append(
+                    schemas.Cashback(
+                        product_type=cashback.product_type,
+                        value=cashback.value
+                    )
+                )
+            cards.append(
+                schemas.CardWithCashback(
+                    bank=card.bank,
+                    last_four_digits=card.card_number[-4:],
+                    cashback=cashbacks,
+                    can_choose=can_choose_cashback(card)
+                )
+            )
+        
+        return cards
 
 class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas.Cashback]):
     async def create(self, db: AsyncSession, obj_in: schemas.Cashback) -> ModelType:
@@ -128,12 +144,23 @@ class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas
         await db.refresh(db_obj)
         return db_obj
     
-    async def get(self, db: AsyncSession, product_type: str, value: int) -> ModelType:
-        statement = select(self._model) \
-            .where(
-                self._model.product_type == product_type,
-                self._model.value == value,
-            )
+    async def get(
+            self,
+            db: AsyncSession,
+            product_type: str | None = None,
+            value: int | None = None,
+            id: int | None = None
+        ) -> ModelType:
+        if id:
+            statement = select(self._model).where(self._model.id == id,)
+        elif product_type and value:
+            statement = select(self._model) \
+                .where(
+                    self._model.product_type == product_type,
+                    self._model.value == value,
+                )
+        else:
+            raise Exception
         results = await db.execute(statement=statement)
         return results.scalar_one_or_none()
     
@@ -189,6 +216,24 @@ class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashb
             user_cashback = await self.create(db, obj_in)
         
         return user_cashback
+    
+
+    async def get_multi(self,
+        db: AsyncSession,
+        card_id: int
+    ) -> List[schemas.UserCashback]:
+        statement = select(self._model).where(self._model.card_id == card_id)
+        results = await db.execute(statement=statement)
+        cashback_query = results.scalars()
+        cashbacks = [
+            schemas.UserCashback(
+                card_id=cashback.card_id,
+                cashback_id=cashback.cashback_id,
+                month=cashback.month,
+                status=cashback.status
+            ) for cashback in cashback_query
+        ]
+        return cashbacks
 
 
 user_crud = RepositoryUser(models.User)
