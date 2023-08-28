@@ -90,8 +90,18 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
         await db.refresh(db_obj)
         return db_obj
     
-    async def get(self, db: AsyncSession, card_number: str) -> ModelType:
-        statement = select(self._model).where(self._model.card_number == card_number)
+    async def get(
+            self,
+            db: AsyncSession,
+            card_number: str | None = None,
+            id: int | None = None
+        ) -> ModelType:
+        if card_number:
+            statement = select(self._model).where(self._model.card_number == card_number)
+        elif id:
+            statement = select(self._model).where(self._model.id == id)
+        else:
+            raise Exception
         results = await db.execute(statement=statement)
         return results.scalar_one_or_none()
     
@@ -114,6 +124,9 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
             user_cashbacks = await user_cashback_crud.get_multi(db, card_id=card.id)
             cashbacks: list = []
             for cashback in user_cashbacks:
+                if not cashback.status:
+                    continue
+                # еще проверка даты для исключения старых кешбеков или сразу в запросе делать
                 cashback: models.Cashback = await cashback_crud.get(db, id=cashback.cashback_id)
                 cashbacks.append(
                     schemas.Cashback(
@@ -123,6 +136,7 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
                 )
             cards.append(
                 schemas.CardWithCashback(
+                    card_id=card.id,
                     bank=card.bank,
                     last_four_digits=card.card_number[-4:],
                     cashback=cashbacks,

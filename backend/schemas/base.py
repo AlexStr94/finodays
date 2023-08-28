@@ -48,6 +48,7 @@ class UserCashback(BaseModel):
 
 
 class CardWithCashback(BaseModel):
+    card_id: int
     bank: str
     last_four_digits: str
     cashback: List[Cashback] | None # если кешбек не выбран или не может быть выбран

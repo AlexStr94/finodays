@@ -4,7 +4,7 @@ from models import base as models
 from schemas import base as schemas
 
 def get_card_cashback(card: models.Card) -> List[schemas.Cashback] | None:
-    if card.bank == 'Центр-инвест':
+    if card.bank == 'Тинькофф':
         return [
             schemas.Cashback(
                 product_type='Продукты питания',
