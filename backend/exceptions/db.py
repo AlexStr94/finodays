@@ -8,3 +8,7 @@ class CardAlreadyExist(Exception):
 
 class CashbackAlreadyExist(Exception):
     pass
+
+
+class UserCashbackAlreadyExist(Exception):
+    pass

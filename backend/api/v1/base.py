@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user
-from services.db import card_crud, cashback_crud, user_crud
+from services.db import card_crud, user_cashback_crud, cashback_crud, user_crud
 from services.cashback import get_card_cashback
 from db.db import get_session
 from schemas import base as schemas
@@ -42,20 +42,29 @@ async def get_access_token(
             )
         )
 
+        # получаем от банка уже выбранные кешбеки
         cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_id_db)
+        # тут есть над чем подумать. Если выбран и на следующий месяц кешбек?
+        _date = date.today()
 
         if cashbacks:
             for cashback in cashbacks:
-                cashback_id_db = await cashback_crud.get_or_create(
+                cashback_id_db: models.Cashback = await cashback_crud.get_or_create(
                     db=db,
                     obj_in=cashback
                 )
 
                 # создавать кешбек конкретного пользователя
 
-
-
-
+                await user_cashback_crud.get_or_create(
+                    db=db,
+                    obj_in=schemas.UserCashback(
+                        card_id=card_id_db.id,
+                        cashback_id=cashback_id_db.id,
+                        month=_date,
+                        status=True
+                    )
+                )
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     access_token = create_access_token(

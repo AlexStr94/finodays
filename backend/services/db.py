@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Generic, Type, TypeVar
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, text
@@ -149,8 +150,47 @@ class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas
             cashback = await self.create(db, obj_in)
         
         return cashback
+    
+
+class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashback, schemas.UserCashback]):
+    async def create(self, db: AsyncSession, obj_in: schemas.UserCashback) -> ModelType:
+        obj_in_data: dict = jsonable_encoder(obj_in)
+        db_obj = self._model(**obj_in_data)
+        db.add(db_obj)
+        try:
+            await db.commit()
+        except IntegrityError as e:
+            raise exceptions.UserCashbackAlreadyExist
+        await db.refresh(db_obj)
+        return db_obj
+    
+    async def get(
+            self,
+            db: AsyncSession,
+            obj_in: schemas.UserCashback
+        ) -> ModelType:
+        statement = select(self._model) \
+            .where(
+                self._model.card_id == obj_in.card_id,
+                self._model.cashback_id == obj_in.cashback_id,
+                self._model.month == obj_in.month,
+                self._model.status == obj_in.status
+            )
+        results = await db.execute(statement=statement)
+        return results.scalar_one_or_none()
+    
+    async def get_or_create(self, db: AsyncSession, obj_in: schemas.UserCashback) -> ModelType:
+        user_cashback: models.UserCashback | None = await self.get(
+            db=db,
+            obj_in=obj_in
+        )
+        if not user_cashback:
+            user_cashback = await self.create(db, obj_in)
+        
+        return user_cashback
 
 
 user_crud = RepositoryUser(models.User)
 card_crud = RepositoryCard(models.Card)
 cashback_crud = RepositoryCashback(models.Cashback)
+user_cashback_crud = RepositoryUserCashback(models.UserCashback)

@@ -1,3 +1,4 @@
+from datetime import date
 from pydantic import BaseModel
 
 
@@ -36,3 +37,10 @@ class Card(LiteCard):
 class Cashback(BaseModel):
     product_type: str
     value: int
+
+
+class UserCashback(BaseModel):
+    card_id: int
+    cashback_id: int
+    month: date
+    status: bool

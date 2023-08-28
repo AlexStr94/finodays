@@ -40,3 +40,4 @@ class UserCashback(Base):
     cashback_id = Column(Integer, ForeignKey('cashbacks.id'), nullable=False)
     cashback = relationship('Cashback', back_populates='cards')
     month = Column(Date, nullable=False)
+    status = Column(Boolean, nullable=False)
