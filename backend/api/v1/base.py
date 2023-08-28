@@ -3,6 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+import datetime
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user
@@ -12,6 +13,7 @@ from db.db import get_session
 from schemas import base as schemas
 from models import base as models
 
+from services.db import RepositoryUserCashback, RepositoryCashback
 
 router = APIRouter()
 
@@ -114,12 +116,29 @@ async def get_cashback_for_choose(
     if card and card.user_id == current_user.id and can_choose_cashback(card):
         # надо проверять, есть ли кешбеки на этот месяц
         # получаем кешбеки, которые пользователю предлагаются
-        cashbacks = get_card_choose_cashback(card)
-        # записываем их в таблицу Cashback
-        # создаем UserCashback со статусом не выбрано.
+        cashbacks: List[models.Cashback] = get_card_choose_cashback(card)
 
         if not cashbacks:
             raise Exception
+
+        # записываем их в таблицу Cashback
+        for cashback in cashbacks:
+            cashback_entry = RepositoryCashback(models.Cashback)(
+                product_type=cashback.product_type,
+                value=cashback.value
+            )
+            cashback_crud.create(db, cashback_entry)
+
+        # создаем UserCashback со статусом не выбрано.
+        current_month = datetime.datetime.now().date().replace(day=1)
+        for cashback in cashbacks:
+            user_cashback_entry = RepositoryUserCashback(models.UserCashback)(
+                card_id=card.id,
+                cashback_id=cashback.id,
+                month=current_month,
+                status=False
+            )
+            user_cashback_crud.create(db, user_cashback_entry)
         
         return schemas.CardWithCashback(
             card_id=int(card_id),
