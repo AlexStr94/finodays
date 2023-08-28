@@ -33,7 +33,7 @@ async def get_access_token(
     cards: List[schemas.LiteCard]= get_cards(user.gosuslugi_id)
 
     for card in cards:
-        card_id_db: models.Card = await card_crud.get_or_create(
+        card_in_db: models.Card = await card_crud.get_or_create(
             db=db,
             obj_in=schemas.Card(
                 user_id=user.id,
@@ -43,7 +43,7 @@ async def get_access_token(
         )
 
         # получаем от банка уже выбранные кешбеки
-        cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_id_db)
+        cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_in_db)
         # тут есть над чем подумать. Если выбран и на следующий месяц кешбек?
         _date = date.today()
 
@@ -59,7 +59,7 @@ async def get_access_token(
                 await user_cashback_crud.get_or_create(
                     db=db,
                     obj_in=schemas.UserCashback(
-                        card_id=card_id_db.id,
+                        card_id=card_in_db.id,
                         cashback_id=cashback_id_db.id,
                         month=_date,
                         status=True
@@ -77,8 +77,9 @@ async def get_access_token(
 
 
 @router.get(
-    '/cashbacks',
-    status_code=status.HTTP_200_OK
+    '/cards',
+    status_code=status.HTTP_200_OK,
+    description='Получение списка карт пользователя с кешбеком'
 )
 async def get_files_list(
     current_user: Annotated[schemas.FullUser, Depends(get_current_user)],

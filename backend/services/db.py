@@ -71,8 +71,7 @@ class RepositoryUser(RepositoryDB[models.User, schemas.GosuslugiUser, schemas.Go
         return results.scalar_one_or_none()
     
     async def get_or_create(self, db: AsyncSession, obj_in: schemas.User) -> ModelType:
-        obj_in_data: dict = jsonable_encoder(obj_in)
-        user: models.User | None = await self.get(db, obj_in_data.get('gosuslugi_id'))
+        user: models.User | None = await self.get(db, obj_in.gosuslugi_id)
         if not user:
             user = await self.create(db, obj_in)
         
@@ -110,8 +109,7 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
         return results.scalar_one_or_none()
     
     async def get_or_create(self, db: AsyncSession, obj_in: schemas.Card) -> ModelType:
-        obj_in_data: dict = jsonable_encoder(obj_in)
-        card: models.Card | None = await self.get(db, obj_in_data.get('card_number'))
+        card: models.Card | None = await self.get(db, obj_in.card_number)
         if not card:
             card = await self.create(db, obj_in)
         
@@ -140,11 +138,10 @@ class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas
         return results.scalar_one_or_none()
     
     async def get_or_create(self, db: AsyncSession, obj_in: schemas.Cashback) -> ModelType:
-        obj_in_data: dict = jsonable_encoder(obj_in)
         cashback: models.Cashback | None = await self.get(
             db,
-            product_type=obj_in_data.get('product_type'),
-            value=obj_in_data.get('value')
+            product_type=obj_in.product_type,
+            value=obj_in.value
         )
         if not cashback:
             cashback = await self.create(db, obj_in)
@@ -154,8 +151,12 @@ class RepositoryCashback(RepositoryDB[models.Cashback, schemas.Cashback, schemas
 
 class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashback, schemas.UserCashback]):
     async def create(self, db: AsyncSession, obj_in: schemas.UserCashback) -> ModelType:
-        obj_in_data: dict = jsonable_encoder(obj_in)
-        db_obj = self._model(**obj_in_data)
+        db_obj = self._model(
+            card_id=obj_in.card_id,
+            cashback_id=obj_in.cashback_id,
+            month=obj_in.month,
+            status=obj_in.status
+        )
         db.add(db_obj)
         try:
             await db.commit()

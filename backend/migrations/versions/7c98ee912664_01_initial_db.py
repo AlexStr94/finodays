@@ -1,8 +1,8 @@
 """01_initial-db
 
-Revision ID: 4d0c70ef55d1
+Revision ID: 7c98ee912664
 Revises: 
-Create Date: 2023-08-27 23:10:55.209534
+Create Date: 2023-08-28 16:02:57.731715
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '4d0c70ef55d1'
+revision = '7c98ee912664'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -37,7 +37,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('bank', sa.String(length=100), nullable=False),
-    sa.Column('card_number', sa.Integer(), nullable=True),
+    sa.Column('card_number', sa.String(length=20), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('card_number')
@@ -47,6 +47,7 @@ def upgrade() -> None:
     sa.Column('card_id', sa.Integer(), nullable=False),
     sa.Column('cashback_id', sa.Integer(), nullable=False),
     sa.Column('month', sa.Date(), nullable=False),
+    sa.Column('status', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['card_id'], ['cards.id'], ),
     sa.ForeignKeyConstraint(['cashback_id'], ['cashbacks.id'], ),
     sa.PrimaryKeyConstraint('id')

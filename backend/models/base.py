@@ -20,8 +20,10 @@ class Card(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship('User', back_populates='cards')
     bank = Column(String(100), nullable=False)
-    card_number = Column(Integer, unique=True)
+    card_number = Column(String(20), unique=True)
     cashbacks = relationship('UserCashback', back_populates='card', cascade='delete, merge, save-update')
+    # Можно добавить срок действия, чтобы не показывать старые карты пользователя.
+    # Также можно статус открыта/закрыта
 
 
 class Cashback(Base):
