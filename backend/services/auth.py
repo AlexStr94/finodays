@@ -76,11 +76,21 @@ def authenticate_user(
 
     return schemas.GosuslugiUser(
         first_name='Иван',
-        middle_name='Иванович',
+        # middle_name='Иванович',
         surname='Иванов',
         gosuslugi_id='12345678',
         ebs=True
     )
+
+def get_user_by_photo(photo)-> schemas.GosuslugiUser:
+    return schemas.GosuslugiUser(
+        first_name='Иван',
+        # middle_name='Иванович',
+        surname='Иванов',
+        gosuslugi_id='12345678',
+        ebs=True
+    )
+
 
 def get_cards(gosuslugi_id: str) -> List[schemas.LiteCard]:
     """
@@ -96,5 +106,9 @@ def get_cards(gosuslugi_id: str) -> List[schemas.LiteCard]:
         schemas.LiteCard(
             bank='Тинькофф',
             card_number='1234567812345679'
+        ),
+        schemas.LiteCard(
+            bank='ВТБ',
+            card_number='1234567812345609'
         )
     ]

@@ -1,11 +1,11 @@
 from datetime import date, timedelta
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions.auth import AuthError
-from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user
+from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user, get_user_by_photo
 from services.db import card_crud, user_cashback_crud, cashback_crud, user_crud
 from services.cashback import can_choose_cashback, get_card_cashback, get_card_choose_cashback
 from db.db import get_session
@@ -14,6 +14,89 @@ from models import base as models
 
 
 router = APIRouter()
+
+
+@router.post(
+    '/terminal',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.TerminalResponse
+)
+async def terminal(
+    file_in: UploadFile,
+    db: AsyncSession = Depends(get_session)
+) -> schemas.TerminalResponse:
+    user_info: schemas.GosuslugiUser = get_user_by_photo(file_in)
+    if user_info:
+        cards: List[schemas.LiteCard]= get_cards(user_info.gosuslugi_id)
+
+        user: models.User | None = await user_crud.get(
+            db, user_info.gosuslugi_id
+        )
+
+        if not user:
+            return schemas.TerminalResponse(
+                name=user_info.first_name,
+                surname=user_info.surname,
+                cards=[
+                    schemas.CardWithCashback(
+                        bank=card.bank,
+                        last_four_digits=card.card_number[-4:],
+                        cashback=[]
+                    ) for card in cards
+                ]
+            )
+
+        for card in cards: # надо вынести в отдельную функцию
+            card_in_db: models.Card = await card_crud.get_or_create(
+                db=db,
+                obj_in=schemas.Card(
+                    user_id=user.id,
+                    bank=card.bank,
+                    card_number=card.card_number
+                )
+            )
+
+            # получаем от банка уже выбранные кешбеки
+            cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_in_db)
+            # тут есть над чем подумать. Если выбран и на следующий месяц кешбек?
+            today = date.today()
+            month = date(year=today.year, month=today.month, day=1)
+
+            if cashbacks:
+                for cashback in cashbacks:
+                    cashback_id_db: models.Cashback = await cashback_crud.get_or_create(
+                        db=db,
+                        obj_in=cashback
+                    )
+
+                    # создавать кешбек конкретного пользователя
+
+                    await user_cashback_crud.get_or_create(
+                        db=db,
+                        obj_in=schemas.UserCashback(
+                            card_id=card_in_db.id,
+                            cashback_id=cashback_id_db.id,
+                            month=month,
+                            status=True
+                        )
+                    )
+
+        cards_in_db = await card_crud.get_card_with_month_cashback(
+            db=db,
+            user_id=user.id,
+            month=month
+        )
+        return schemas.TerminalResponse(
+            name=user_info.first_name,
+            surname=user_info.surname,
+            cards=cards_in_db
+        )
+
+        
+                
+
+
+
 
 
 @router.post('/auth', response_model=schemas.Token)
@@ -45,7 +128,8 @@ async def get_access_token(
         # получаем от банка уже выбранные кешбеки
         cashbacks: List[schemas.Cashback] | None = get_card_cashback(card_in_db)
         # тут есть над чем подумать. Если выбран и на следующий месяц кешбек?
-        _date = date.today()
+        today = date.today()
+        month = date(year=today.year, month=today.month, day=1)
 
         if cashbacks:
             for cashback in cashbacks:
@@ -61,7 +145,7 @@ async def get_access_token(
                     obj_in=schemas.UserCashback(
                         card_id=card_in_db.id,
                         cashback_id=cashback_id_db.id,
-                        month=_date,
+                        month=month,
                         status=True
                     )
                 )
@@ -91,41 +175,136 @@ async def get_cards_list(
     """
     user: models.User = await user_crud.get(db, current_user.gosuslugi_id)
 
-    cards = await card_crud.get_multi(db, user_id=user.id)
+    today = date.today()
+    month = date(year=today.year, month=today.month, day=1)
+
+    cards = await card_crud.get_card_with_month_cashback(
+        db=db,
+        user_id=user.id,
+        month=month
+    )
     return cards
 
 
 @router.get(
     '/get_cashback_for_choose/{card_id}',
     status_code=status.HTTP_202_ACCEPTED,
+    response_model=schemas.FullCardWithCashback,
     description='Получение списка доступных кешбеков по карте'
 )
 async def get_cashback_for_choose(
     card_id,
     current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
     db: AsyncSession = Depends(get_session),
-):
+) -> schemas.FullCardWithCashback:
     """
         в заголовке запроса  необходимо указать токен:
         - Authorization: Bearer <token>
     """
-    # надо бы добавить проверку, что карта принадлежит этому пользователю
     card: models.Card | None = await card_crud.get(db, id=int(card_id))
-    if card and card.user_id == current_user.id and can_choose_cashback(card):
+    today = date.today()
+    month = date(year=today.year, month=today.month, day=1)
+    if card:
+        month_cashbacks = await user_cashback_crud.filter_by(
+            db=db,
+            card_id=card.id,
+            month=month,
+            status=True
+        )
+        cashback_already_choosen: bool = False
+        for month in month_cashbacks:
+            cashback_already_choosen = True
+    if (
+        card
+        and card.user_id == current_user.id
+        and can_choose_cashback(card)
+        and not cashback_already_choosen
+    ):
+
         # надо проверять, есть ли кешбеки на этот месяц
         # получаем кешбеки, которые пользователю предлагаются
         cashbacks = get_card_choose_cashback(card)
-        # записываем их в таблицу Cashback
-        # создаем UserCashback со статусом не выбрано.
-
-        if not cashbacks:
-            raise Exception
+        for cashback in cashbacks:
+            # код в цикле повторяется в другом эндпоинте, можно вынести в функцию
+            cashback_in_db: models.Cashback = await cashback_crud.get_or_create(
+                db=db,
+                obj_in=cashback
+            )
+            # создавать кешбек конкретного пользователя
+            ob = await user_cashback_crud.get_or_create(
+                db=db,
+                obj_in=schemas.UserCashback(
+                    card_id=card.id,
+                    cashback_id=cashback_in_db.id,
+                    month=month,
+                    status=False
+                )
+            )
         
-        return schemas.CardWithCashback(
+        return schemas.FullCardWithCashback(
             card_id=int(card_id),
             bank=card.bank,
             last_four_digits=card.card_number[-4:],
             cashback=cashbacks,
             can_choose=can_choose_cashback(card)
         )
+    
+    raise HTTPException
+
+
+@router.post(
+    '/choose_card_cashback/{card_id}',
+    status_code=status.HTTP_200_OK,
+    description='Установка кешбеков на месяц',
+    response_model=List[schemas.Cashback]
+)
+async def choose_card_cashback(
+    card_id,
+    month_cashback: schemas.MonthCashback,
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session),
+):
+    card: models.Card | None = await card_crud.get(db, id=int(card_id))
+
+    if card and card.user_id == current_user.id:
+        month: date = month_cashback.month
+        month = date(year=month.year, month=month.month, day=1)
+
+        try:
+            cashbacks = [
+                await cashback_crud.get(
+                    db, product_type=cashback.product_type, value=cashback.value
+                ) for cashback in month_cashback.cashback
+            ]
+
+            user_cashbacks = [
+                await user_cashback_crud.get(
+                    db,
+                    obj_in=schemas.UserCashback(
+                        card_id=card.id,
+                        cashback_id=cashback.id,
+                        month=month,
+                        status=False
+                    )
+                ) for cashback in cashbacks
+            ]
+
+            choosen_user_cashbacks = [
+                await user_cashback_crud.update(
+                    db,
+                    obj_in=schemas.UserCashback(
+                        card_id=card.id,
+                        cashback_id=cashback.cashback_id,
+                        month=month,
+                        status=False
+                    ),
+                    status=True
+                ) for cashback in user_cashbacks
+            ]
+        except:
+            raise HTTPException
+        
+        return month_cashback.cashback
+
+    raise HTTPException
 

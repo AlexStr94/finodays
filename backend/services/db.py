@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Generic, List, Type, TypeVar
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, text
@@ -21,8 +22,8 @@ class Repository:
 
     def get_or_create(self, *args, **kwargs):
         raise NotImplementedError
-
-    def get_multi(self, *args, **kwargs):
+    
+    def filter_by(self, *args, **kwargs):
         raise NotImplementedError
 
     def create(self, *args, **kwargs):
@@ -112,21 +113,26 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
         
         return card
     
-    async def get_multi(self,
+    async def get_card_with_month_cashback(
+        self,
         db: AsyncSession,
-        user_id: int
-    ) -> List[schemas.CardWithCashback]:
+        user_id: int,
+        month: date
+    ) -> List[schemas.FullCardWithCashback]:
         statement = select(self._model).where(self._model.user_id == user_id)
         results = await db.execute(statement=statement)
         card_query = results.scalars()
         cards: list = []
         for card in card_query:
-            user_cashbacks = await user_cashback_crud.get_multi(db, card_id=card.id)
+            user_cashbacks = await user_cashback_crud.filter_by(
+                db,
+                card_id=card.id,
+                month=month
+            )
             cashbacks: list = []
             for cashback in user_cashbacks:
                 if not cashback.status:
                     continue
-                # еще проверка даты для исключения старых кешбеков или сразу в запросе делать
                 cashback: models.Cashback = await cashback_crud.get(db, id=cashback.cashback_id)
                 cashbacks.append(
                     schemas.Cashback(
@@ -135,7 +141,7 @@ class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
                     )
                 )
             cards.append(
-                schemas.CardWithCashback(
+                schemas.FullCardWithCashback(
                     card_id=card.id,
                     bank=card.bank,
                     last_four_digits=card.card_number[-4:],
@@ -230,25 +236,32 @@ class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashb
             user_cashback = await self.create(db, obj_in)
         
         return user_cashback
-    
 
-    async def get_multi(self,
-        db: AsyncSession,
-        card_id: int
-    ) -> List[schemas.UserCashback]:
-        statement = select(self._model).where(self._model.card_id == card_id)
+    async def filter_by(
+            self, 
+            db: AsyncSession,
+            **kwargs
+    ):
+        statement = select(self._model).filter_by(**kwargs)
         results = await db.execute(statement=statement)
         cashback_query = results.scalars()
-        cashbacks = [
-            schemas.UserCashback(
-                card_id=cashback.card_id,
-                cashback_id=cashback.cashback_id,
-                month=cashback.month,
-                status=cashback.status
-            ) for cashback in cashback_query
-        ]
-        return cashbacks
-
+        return cashback_query
+    
+    async def update(
+        self,
+        db: AsyncSession,
+        obj_in: schemas.UserCashback,
+        status: bool
+    ) -> models.UserCashback:
+        db_obj: models.UserCashback = await self.get(
+            db,
+            obj_in=obj_in
+        )
+        if db_obj:
+            db_obj.status = status
+            await db.commit()
+            return db_obj
+        raise exceptions.UserCashbackDoesNotExist
 
 user_crud = RepositoryUser(models.User)
 card_crud = RepositoryCard(models.Card)
