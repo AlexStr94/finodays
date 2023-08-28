@@ -78,4 +78,43 @@ class RepositoryUser(RepositoryDB[models.User, schemas.GosuslugiUser, schemas.Go
         return user
     
 
+class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+    def __init__(self, model: Type[ModelType]):
+        self._model = model
+
+    async def create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
+        obj_in_data = jsonable_encoder(obj_in)
+        db_obj = self._model(**obj_in_data)
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
+        return db_obj
+    
+
+class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
+    async def create(self, db: AsyncSession, obj_in: schemas.Card) -> ModelType:
+        obj_in_data: dict = jsonable_encoder(obj_in)
+        db_obj = self._model(**obj_in_data)
+        db.add(db_obj)
+        try:
+            await db.commit()
+        except IntegrityError as e:
+            raise exceptions.CardAlreadyExist
+        await db.refresh(db_obj)
+        return db_obj
+    
+    async def get(self, db: AsyncSession, card_number: str) -> ModelType:
+        statement = select(self._model).where(self._model.card_number == card_number)
+        results = await db.execute(statement=statement)
+        return results.scalar_one_or_none()
+    
+    async def get_or_create(self, db: AsyncSession, obj_in: schemas.Card) -> ModelType:
+        obj_in_data: dict = jsonable_encoder(obj_in)
+        card: models.Card | None = await self.get(db, obj_in_data.get('card_number'))
+        if not card:
+            card = await self.create(db, obj_in)
+        
+        return card
+
 user_crud = RepositoryUser(models.User)
+card_crud = RepositoryCard(models.Card)

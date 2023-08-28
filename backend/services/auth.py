@@ -82,19 +82,19 @@ def authenticate_user(
         ebs=True
     )
 
-def get_cards(gosuslugi_id: str) -> List[schemas.Card]:
+def get_cards(gosuslugi_id: str) -> List[schemas.LiteCard]:
     """
     Заглушка для получения информации о
     картах пользователя от банка
     """
 
     return [
-        schemas.Card(
+        schemas.LiteCard(
             bank='Центр-инвест',
-            number='1234567812345678'
+            card_number='1234567812345678'
         ),
-        schemas.Card(
+        schemas.LiteCard(
             bank='Тинькофф',
-            number='1234567812345679'
+            card_number='1234567812345679'
         )
     ]

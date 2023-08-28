@@ -24,6 +24,10 @@ class GosuslugiUser(BaseModel):
     ebs: bool
 
 
-class Card(BaseModel):
+class LiteCard(BaseModel):
     bank: str
-    number: str
+    card_number: str
+
+
+class Card(LiteCard):
+    user_id: int

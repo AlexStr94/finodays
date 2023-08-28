@@ -1,15 +1,16 @@
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user
-from services.db import user_crud
+from services.db import card_crud, user_crud
 from db.db import get_session
 from schemas import base as schemas
 from models import base as models
+
 
 router = APIRouter()
 
@@ -28,9 +29,18 @@ async def get_access_token(
     
     user: models.User = await user_crud.get_or_create(db, user_info)
 
-    cards = get_cards(user.gosuslugi_id)
+    cards: List[schemas.LiteCard]= get_cards(user.gosuslugi_id)
 
-    # Нужно создавать или обновлять информацию по картам в бд
+    for card in cards:
+        await card_crud.get_or_create(
+            db=db,
+            obj_in=schemas.Card(
+                user_id=user.id,
+                bank=card.bank,
+                card_number=card.card_number
+            )
+        )
+
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     access_token = create_access_token(
