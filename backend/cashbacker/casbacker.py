@@ -40,9 +40,17 @@ class Cashbacker:
         self.card = card
 
     def __get_product_categories(self, products_names: List[str]) -> List[str]:
-        tf_
-
-        return 
+        vectors= self.vector_text(product_names)
+        model = CatBoostClassifier()
+        model.load_model('catboost.cbm')
+        predictions=model.predict(vectors)
+        dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
+        topics=[]
+        for index in range(len(predictions)):
+          label = predictions[index].item()
+          topic = dictionary['topic'][dictionary['label'].index(label)]
+          topics.append(topic)
+        return topics
 
     
     def vector_text(self, products):
@@ -70,20 +78,6 @@ class Cashbacker:
         vectorized_sentence = tfidf.transform(all_sentence)   
 
         return vectorized_sentence
-
-
-    def get_topics_name(product_names):
-        vectors= vector_text(product_names)
-        model =CatBoostClassifier()
-        model.load_model('catboost.cbm')
-        predictions=model.predict(vectors)
-        dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
-        topics=[]
-        for index in range(len(predictions)):
-          label = predictions[index].item()
-          topic = dictionary['topic'][dictionary['label'].index(label)]
-          topics.append(topic)
-        return topics
 
         
     def calculate_cashback_categories(self) -> List[schemas.Cashback]:
