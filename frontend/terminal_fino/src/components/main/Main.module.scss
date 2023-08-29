@@ -1,0 +1,27 @@
+.main {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: center;
+    font-size: 24px;
+    font-weight: 400;
+
+    &__web_camera {
+        width: 400px;
+        height: 600px;
+        border-radius: 20px;
+        border: 1px solid black;
+    }
+
+    &__start {
+        background-color: black;
+        color: white;
+        padding: 20px 40px;
+        border-radius: 10px;
+        
+        &:disabled {
+            cursor: auto;
+            opacity: 0.8;
+        }
+    }
+}

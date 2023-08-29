@@ -1,0 +1,126 @@
+%btn {
+    color: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+}
+
+%bord {
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid black;
+}
+
+.payment {
+    font-size: 12px;
+    font-weight: 400;
+    &__wellcome {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        font-size: 30px;
+        font-weight: 600;
+        align-items: center;
+    }
+
+    &__total {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        @extend %bord;
+    }
+
+    &__total_item {
+        display: flex;
+        gap: 40px;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    &__main {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    &__main_cards {
+        max-height: 600px;
+        @extend %bord;
+        overflow-y: auto;
+    }
+
+    &__main_card {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: center;
+        padding: 10px;
+        border: 2px solid black;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    &__main_card_chs {
+        border: 2px solid green !important;
+        background-color: aqua;
+    }
+
+    &__main_card_cashback {
+        &>span {
+            text-align: center;
+            margin-bottom: 5px;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+    }
+
+    &__main_card_data {
+        position: relative;
+        width: 150px;
+        height: 75px;
+        border: 1px solid black;
+        border-radius: 5px;
+    }
+
+    &__main_card_name {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+    }
+
+    &__main_card_mir {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+    }
+
+    &__main_card_numbers {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+    }
+
+    &__empty {
+        color: red;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    &__pay {
+        background-color: green;
+        @extend %btn;
+    }
+
+    &__cancel {
+        background-color: red;
+        @extend %btn;
+    }
+}
