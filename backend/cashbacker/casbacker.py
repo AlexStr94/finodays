@@ -6,17 +6,15 @@ from schemas import base as schemas
 from models import base as models
 
 import nltk
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from catboost import CatBoostClassifier
 from nltk.corpus import stopwords
 from string import punctuation
 import spacy
 from langdetect import detect
-
-import openai
+import joblib
 
 from services.banks import get_categories_values, get_card_transactions
-
-openai.api_key = app_settings.gpt_key
 
 nltk.download('stopwords')
 
@@ -42,13 +40,14 @@ class Cashbacker:
         self.card = card
 
     def __get_product_categories(self, products_names: List[str]) -> List[str]:
+        tf_
 
-        return self.topic_list(products_names)
+        return 
 
     
-    def topic_list(self, products):
+    def vector_text(self, products):
 
-        topics = []
+        all_sentence = []
     
         for value in products:
             try:
@@ -56,37 +55,36 @@ class Cashbacker:
 
                 if lang == 'en':
                     doc = nlp_eng(value)
-                    topic = self.topic_naming(doc)
-                    topics.append(topic)
+                    lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
+                    cleaned_sentence = " ".join(lemmas)
+                    all_sentence.append(cleaned_sentence)
                 else:
                     doc = nlp_rus(value)
-                    topic = self.topic_naming(doc)
-                    topics.append(topic)
+                    lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
+                    cleaned_sentence = " ".join(lemmas)
+                    all_sentence.append(cleaned_sentence)
             except Exception as e:
                 print(f"Error processing value: {value}")
                 print(f"Error message: {str(e)}")
+        tfidf=joblib.load('tfidf_fit.joblib')
+        vectorized_sentence = tfidf.transform(all_sentence)   
 
+        return vectorized_sentence
+
+
+    def get_topics_name(product_names):
+        vectors= vector_text(product_names)
+        model =CatBoostClassifier()
+        model.load_model('catboost.cbm')
+        predictions=model.predict(vectors)
+        dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
+        topics=[]
+        for index in range(len(predictions)):
+          label = predictions[index].item()
+          topic = dictionary['topic'][dictionary['label'].index(label)]
+          topics.append(topic)
         return topics
 
-    
-    def topic_naming(self,doc):
-         
-        items = ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'образование', 'электроника']
-        system = f'{items} из перечисленных категорий, ТОЧНО выбери одну и укажи ТОЛЬКО её (без знаков препинания и дополнительных слов). Новых предлагать нельзя Регистр должен быть тем же. Только из списка'
-        
-        lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation]
-        vectorizer = CountVectorizer(stop_words=stop_words)
-        x = vectorizer.fit_transform(lemmas)
-        tokens = vectorizer.get_feature_names_out()
-        content = f'{items} выбери категорию на основе списка слов ниже: {" ".join(tokens)}'
-        
-        completion = openai.ChatCompletion.create(
-          model="gpt-3.5-turbo",
-          messages=[{"role": "system", "content": system},
-            {"role": "user", "content": content}], max_tokens= 20, temperature=0.05)
-        response_content = completion["choices"][0]["message"]["content"]
-        
-        return response_content
         
     def calculate_cashback_categories(self) -> List[schemas.Cashback]:
         card = self.card
