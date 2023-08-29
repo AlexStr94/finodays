@@ -48,12 +48,27 @@ class UserCashback(BaseModel):
 
 
 class CardWithCashback(BaseModel):
-    card_id: int
     bank: str
     last_four_digits: str
     cashback: List[Cashback] | None # если кешбек не выбран или не может быть выбран
+
+
+class FullCardWithCashback(CardWithCashback):
+    card_id: int
     can_choose: bool
 
 
 class CardList(BaseModel):
+    cards: List[FullCardWithCashback]
+
+
+class MonthCashback(BaseModel):
+    month: date
+    cashback: List[Cashback]
+
+
+class TerminalResponse(BaseModel):
+    name: str
+    surname: str
+    # middlename: str
     cards: List[CardWithCashback]

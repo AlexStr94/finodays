@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from api.v1 import base as api
@@ -12,6 +13,17 @@ app = FastAPI(
 
 app.include_router(api.router, prefix=app_settings.api_v1_prefix)
 
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -12,3 +12,7 @@ class CashbackAlreadyExist(Exception):
 
 class UserCashbackAlreadyExist(Exception):
     pass
+
+
+class UserCashbackDoesNotExist(Exception):
+    pass
