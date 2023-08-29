@@ -1,12 +1,11 @@
+import os
 from typing import List
 from collections import Counter
-from core.config import app_settings
 
 from schemas import base as schemas
 from models import base as models
 
 import nltk
-from sklearn.feature_extraction.text import TfidfVectorizer
 from catboost import CatBoostClassifier
 from nltk.corpus import stopwords
 from string import punctuation
@@ -38,12 +37,6 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
 class Cashbacker:
     def __init__(self, card:models.Card):
         self.card = card
-
-    def __get_product_categories(self, products_names: List[str]) -> List[str]:
-        tf_
-
-        return 
-
     
     def vector_text(self, products):
 
@@ -66,16 +59,18 @@ class Cashbacker:
             except Exception as e:
                 print(f"Error processing value: {value}")
                 print(f"Error message: {str(e)}")
-        tfidf=joblib.load('tfidf_fit.joblib')
+        path = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'backend/cashbacker/tfidf_fit.joblib')
+        tfidf=joblib.load(path)
         vectorized_sentence = tfidf.transform(all_sentence)   
 
         return vectorized_sentence
 
 
-    def get_topics_name(product_names):
-        vectors= vector_text(product_names)
+    def get_topics_name(self, product_names):
+        vectors= self.vector_text(product_names)
         model =CatBoostClassifier()
-        model.load_model('catboost.cbm')
+        path = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'backend/cashbacker/catboost.cbm')
+        model.load_model(path)
         predictions=model.predict(vectors)
         dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
         topics=[]
@@ -90,7 +85,7 @@ class Cashbacker:
         card = self.card
         transactions = get_card_transactions(card)
 
-        categories = self.__get_product_categories([transaction['product_name'] for transaction in transactions])
+        categories = self.get_topics_name([transaction['product_name'] for transaction in transactions])
         best_categories = get_n_most_frequent_strings(categories, n=5)
         best_categories_values = get_categories_values(card.bank, best_categories)
 
