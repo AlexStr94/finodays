@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Generic, List, Type, TypeVar
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select, text
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -78,6 +78,10 @@ class RepositoryUser(RepositoryDB[models.User, schemas.GosuslugiUser, schemas.Go
         
         return user
     
+    async def count_users(self, db: AsyncSession) -> int:
+        statement = func.count(self._model.id)
+        results = await db.execute(statement=statement)
+        return results.scalar_one()
 
 class RepositoryCard(RepositoryDB[models.Card, schemas.Card, schemas.Card]):
     async def create(self, db: AsyncSession, obj_in: schemas.Card) -> ModelType:
