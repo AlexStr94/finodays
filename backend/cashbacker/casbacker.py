@@ -1,13 +1,11 @@
 from typing import List
 from collections import Counter
+from core.config import app_settings
 
 from schemas import base as schemas
 from models import base as models
 
-import pandas as pd 
-
 import nltk
-from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
 from string import punctuation
@@ -15,11 +13,10 @@ import spacy
 from langdetect import detect
 
 import openai
-import os
 
 from services.banks import get_categories_values, get_card_transactions
 
-openai.api_key = os.environ["GPT_KEY"]
+openai.api_key = app_settings.gpt_key
 
 nltk.download('stopwords')
 
@@ -41,11 +38,9 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
 
 
 class Cashbacker:
-    def __int__(self):
-        ...
-        # тут сохранить инстансы моделей, чтобы не инициализировать кажндый раз
+    def __init__(self, card:models.Card):
+        self.card = card
 
-    @staticmethod
     def __get_product_categories(self, products_names: List[str]) -> List[str]:
 
         return self.topic_list(products_names)
@@ -53,28 +48,28 @@ class Cashbacker:
     
     def topic_list(self, products):
 
-    topics = []
-   
-    for value in products:
-        try:
-            lang = detect(value)
+        topics = []
+    
+        for value in products:
+            try:
+                lang = detect(value)
 
-            if lang == 'en':
-                doc = nlp_eng(value)
-                topic = self.topic_naming(doc)
-                topics.append(topic)
-            else:
-                doc = nlp_rus(value)
-                topic = self.topic_naming(doc)
-                topics.append(topic)
-        except Exception as e:
-            print(f"Error processing value: {value}")
-            print(f"Error message: {str(e)}")
+                if lang == 'en':
+                    doc = nlp_eng(value)
+                    topic = self.topic_naming(doc)
+                    topics.append(topic)
+                else:
+                    doc = nlp_rus(value)
+                    topic = self.topic_naming(doc)
+                    topics.append(topic)
+            except Exception as e:
+                print(f"Error processing value: {value}")
+                print(f"Error message: {str(e)}")
 
-    return topics
+        return topics
 
     
-    def topic_naming(doc):
+    def topic_naming(self,doc):
          
         items = ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'образование', 'электроника']
         system = f'{items} из перечисленных категорий, ТОЧНО выбери одну и укажи ТОЛЬКО её (без знаков препинания и дополнительных слов). Новых предлагать нельзя Регистр должен быть тем же. Только из списка'
@@ -91,14 +86,14 @@ class Cashbacker:
             {"role": "user", "content": content}], max_tokens= 20, temperature=0.05)
         response_content = completion["choices"][0]["message"]["content"]
         
-    return response_content
+        return response_content
         
-    @staticmethod
-    def calculate_cashback_categories(self, card: models.Card) -> List[schemas.Cashback]:
+    def calculate_cashback_categories(self) -> List[schemas.Cashback]:
+        card = self.card
         transactions = get_card_transactions(card)
 
         categories = self.__get_product_categories([transaction['product_name'] for transaction in transactions])
-        best_categories = get_n_most_frequent_strings(categories)
+        best_categories = get_n_most_frequent_strings(categories, n=5)
         best_categories_values = get_categories_values(card.bank, best_categories)
 
         cashback_list = []

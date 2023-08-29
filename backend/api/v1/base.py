@@ -165,8 +165,6 @@ async def get_cashback_for_choose(
         and not cashback_already_choosen
     ):
 
-        # надо проверять, есть ли кешбеки на этот месяц
-        # получаем кешбеки, которые пользователю предлагаются
         cashbacks = get_card_choose_cashback(card)
         for cashback in cashbacks:
             # код в цикле повторяется в другом эндпоинте, можно вынести в функцию
