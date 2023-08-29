@@ -59,7 +59,7 @@ class Cashbacker:
             except Exception as e:
                 print(f"Error processing value: {value}")
                 print(f"Error message: {str(e)}")
-        path = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'backend/cashbacker/tfidf_fit.joblib')
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tfidf_fit.joblib')
         tfidf=joblib.load(path)
         vectorized_sentence = tfidf.transform(all_sentence)   
 
@@ -69,7 +69,7 @@ class Cashbacker:
     def get_topics_name(self, product_names):
         vectors= self.vector_text(product_names)
         model =CatBoostClassifier()
-        path = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'backend/cashbacker/catboost.cbm')
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'catboost.cbm')
         model.load_model(path)
         predictions=model.predict(vectors)
         dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
