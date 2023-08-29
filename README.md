@@ -1,4 +1,7 @@
-# finodays
+# *FINODAYS*
+#
+
+# Backend:
 
 ## Стек технологий (API):
 -Python
@@ -24,3 +27,24 @@ alembic upgrade head
 
 Все, API доступно по адресу: 127.0.0.1
 Также API можно протестировать по адресу: http://80.78.241.76/docs
+#
+
+# ML: 
+Подробную информацию по файлам, связанным с ml частью смотреть notebooks/README.md
+
+# Frontend: 
+
+## Запуск терминала
+```console
+cd frontend/terminal_fino
+npm install
+npm run start
+```
+
+## Запуск приложения
+```console
+cd frontend/app_center_invest
+npm install
+npx expo start
+```
+Также в frontend/app_center_invest вы можете найти установочный файл под android - application.aab

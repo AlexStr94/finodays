@@ -7,7 +7,6 @@
 * langdetect
 * openai
 * catboost
-* 
 
 # Topic Modeling
 
