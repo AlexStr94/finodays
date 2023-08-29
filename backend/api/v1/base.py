@@ -3,6 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, status, HTTPException, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+import datetime
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user, get_user_by_photo
@@ -12,6 +13,7 @@ from db.db import get_session
 from schemas import base as schemas
 from models import base as models
 
+from services.db import RepositoryUserCashback, RepositoryCashback
 
 router = APIRouter()
 
@@ -163,8 +165,6 @@ async def get_cashback_for_choose(
         and not cashback_already_choosen
     ):
 
-        # надо проверять, есть ли кешбеки на этот месяц
-        # получаем кешбеки, которые пользователю предлагаются
         cashbacks = get_card_choose_cashback(card)
         for cashback in cashbacks:
             # код в цикле повторяется в другом эндпоинте, можно вынести в функцию
@@ -173,7 +173,7 @@ async def get_cashback_for_choose(
                 obj_in=cashback
             )
             # создавать кешбек конкретного пользователя
-            ob = await user_cashback_crud.get_or_create(
+            await user_cashback_crud.get_or_create(
                 db=db,
                 obj_in=schemas.UserCashback(
                     card_id=card.id,
