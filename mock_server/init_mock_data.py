@@ -1,18 +1,19 @@
 import asyncio
 import csv
-from datetime import date, datetime, timedelta
-from dateutil import relativedelta
 import os
-from random import choices, randint, randrange, choice
+from datetime import date, datetime, timedelta
+from random import choice, choices, randint, randrange
 from string import digits
 from typing import List
 
+from dateutil import relativedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from models import base as models
-from services.db import bank_crud, card_crud, cashback_crud, user_crud, user_cashback_crud, transaction_crud
 from schemas import base as schemas
+from services.db import (bank_crud, card_crud, cashback_crud, transaction_crud,
+                         user_cashback_crud, user_crud)
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 

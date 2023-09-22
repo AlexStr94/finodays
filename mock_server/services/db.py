@@ -1,13 +1,12 @@
 from datetime import date
 from typing import Generic, List, Type, TypeVar
+
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select, extract
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import MultipleResultsFound
-from sqlalchemy.orm import selectinload
-
-
 from pydantic import BaseModel
+from sqlalchemy import extract, select
+from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.db import Base
 from exceptions.base import CardNotFoundException
@@ -46,7 +45,11 @@ class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self._model = model
 
-    async def create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
+    async def create(
+            self,
+            db: AsyncSession,
+            obj_in: CreateSchemaType
+        ) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)
         db_obj = self._model(**obj_in_data)
         db.add(db_obj)
@@ -76,7 +79,11 @@ class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType]):
         
 
 class RepositoryUser(RepositoryDB[models.User, schemas.UserCreate]):
-    async def create(self, db: AsyncSession, obj_in: schemas.UserCreate) -> ModelType:
+    async def create(
+            self,
+            db: AsyncSession,
+            obj_in: schemas.UserCreate
+        ) -> models.User:
         birth_date = obj_in.birth_date
         obj_in_data = jsonable_encoder(obj_in)
         obj_in_data['birth_date'] = birth_date
@@ -92,19 +99,29 @@ class RepositoryBank(RepositoryDB[models.Bank, schemas.BankCreate]):
 
 
 class RepositoryCard(RepositoryDB[models.Card, schemas.CardCreate]):
-    async def filter_by(self, db: AsyncSession, **kwargs) -> List[ModelType]:
-        statement = select(self._model).filter_by(**kwargs).options(selectinload(self._model.bank))
+    async def filter_by(self, db: AsyncSession, **kwargs) -> List[models.Card]:
+        statement = select(self._model) \
+            .filter_by(**kwargs) \
+            .options(selectinload(self._model.bank))
         results = await db.execute(statement=statement)
         lst = results.scalars().all()
         return lst
 
 
-class RepositoryCashback(RepositoryDB[models.Cashback, schemas.CashbackCreate]):
+class RepositoryCashback(
+    RepositoryDB[models.Cashback, schemas.CashbackCreate]
+):
     pass
 
 
-class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashbackCreate]):
-    async def create(self, db: AsyncSession, obj_in: schemas.UserCashbackCreate) -> ModelType:
+class RepositoryUserCashback(
+    RepositoryDB[models.UserCashback, schemas.UserCashbackCreate]
+):
+    async def create(
+            self,
+            db: AsyncSession,
+            obj_in: schemas.UserCashbackCreate
+        ) -> models.UserCashback:
         month = obj_in.month
         obj_in_data = jsonable_encoder(obj_in)
         obj_in_data['month'] = month
@@ -138,7 +155,9 @@ class RepositoryUserCashback(RepositoryDB[models.UserCashback, schemas.UserCashb
         return results.scalars().all()
     
 
-class RepositoryTransaction(RepositoryDB[models.Transaction, schemas.TransactionCreate]):
+class RepositoryTransaction(
+    RepositoryDB[models.Transaction, schemas.TransactionCreate]
+):
     async def create(
             self, db: AsyncSession,
             obj_in: schemas.TransactionCreate

@@ -1,9 +1,9 @@
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
-import uvicorn
 
-from core.config import settings
 from api.v1 import base as api
+from core.config import settings
 
 app = FastAPI(
     title=settings.app_title,

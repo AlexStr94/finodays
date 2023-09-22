@@ -1,18 +1,16 @@
 import asyncio
-from logging.config import fileConfig
 import os
-from dotenv import load_dotenv
 
+from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
-
 from core.config import BASE_DIR
 from db.db import Base
+from logging.config import fileConfig
 from models.base import *
-
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 

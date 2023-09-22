@@ -1,6 +1,6 @@
 from datetime import date
-from typing import List
 from random import choice
+from typing import List
 
 from fastapi import APIRouter, Depends, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.db import get_session
 from exceptions import base as exceptions
 from models import base as models
-from services.db import card_crud, user_crud, user_cashback_crud, transaction_crud
-from schemas import base as schemas 
+from schemas import base as schemas
+from services.db import (card_crud, transaction_crud, user_cashback_crud,
+                         user_crud)
 
 router = APIRouter()
 
