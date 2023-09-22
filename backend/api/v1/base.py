@@ -3,7 +3,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, status, HTTPException, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-import datetime
+from services.validation import validate_photo
 
 from exceptions.auth import AuthError
 from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, authenticate_user, create_access_token, get_cards, get_current_user, get_user_by_photo
@@ -13,7 +13,6 @@ from db.db import get_session
 from schemas import base as schemas
 from models import base as models
 
-from services.db import RepositoryUserCashback, RepositoryCashback
 
 router = APIRouter()
 
@@ -27,6 +26,9 @@ async def terminal(
     file_in: UploadFile,
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
+    photo_validation = validate_photo(file_in)
+    if not photo_validation:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
     user_info: schemas.GosuslugiUser = get_user_by_photo(file_in)
     if user_info:
         cards: List[schemas.LiteCard] = get_cards(user_info.gosuslugi_id)
