@@ -10,12 +10,12 @@ from jose import JWTError, jwt
 from db.db import get_session
 from exceptions.auth import CredentialException
 
-from core.config import settings
+from core.config import app_settings
 from schemas import base as schemas
 from models import base as models
 from services.db import user_crud
 
-SECRET_KEY = settings.secret_key
+SECRET_KEY = app_settings.secret_key
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
