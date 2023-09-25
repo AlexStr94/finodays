@@ -6,12 +6,17 @@ from schemas import base as schemas
 from models import base as models
 
 import nltk
-from catboost import CatBoostClassifier
 from nltk.corpus import stopwords
 from string import punctuation
 import spacy
 from langdetect import detect
-import joblib
+
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import load_model
+
+import tensorflow_addons as tfa
+import tensorflow as tf
 
 from services.banks import get_categories_values, get_card_transactions
 
@@ -24,6 +29,15 @@ stop_words_rus = stopwords.words('russian')
 stop_words_eng = stopwords.words('english')
 stop_words = stop_words_rus+stop_words_eng+['каждый день', 'каждый', 'день', 'красная цена', 'красная', 'цена', 'верный', 'дикси', 'моя', 'моя цена', 'окей','то, что надо!', 'smart','spar', 'ашан']
 
+
+def preprocess_sentences(sentences, tokenizer, max_length):
+    with open('tokenizer_LSTM.pkl', 'rb') as f:
+        tokenizer = pickle.load(f)
+        
+    sequences = tokenizer.texts_to_sequences(sentences)
+    padded_sequences = pad_sequences(sequences, maxlen=max_length, padding='post', truncating='post')
+    return padded_sequences
+    
 
 def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
     string_counts = Counter(strings)
@@ -38,40 +52,34 @@ class Cashbacker:
     def __init__(self, card:models.Card):
         self.card = card
     
-    def vector_text(self, products):
+     def tokenize_text(products):
 
         all_sentence = []
-    
+
         for value in products:
-            try:
-                lang = detect(value)
+            lang = detect(value)
 
-                if lang == 'en':
-                    doc = nlp_eng(value)
-                    lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
-                    cleaned_sentence = " ".join(lemmas)
-                    all_sentence.append(cleaned_sentence)
-                else:
-                    doc = nlp_rus(value)
-                    lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
-                    cleaned_sentence = " ".join(lemmas)
-                    all_sentence.append(cleaned_sentence)
-            except Exception as e:
-                print(f"Error processing value: {value}")
-                print(f"Error message: {str(e)}")
-        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tfidf_fit.joblib')
-        tfidf=joblib.load(path)
-        vectorized_sentence = tfidf.transform(all_sentence)   
+            if lang == 'en':
+                doc = nlp_eng(value)
+                lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
+                cleaned_sentence = " ".join(lemmas)
+                all_sentence.append(cleaned_sentence)
+            else:
+                doc = nlp_rus(value)
+                lemmas = [token.lemma_ for token in doc if token.is_alpha and token.text not in punctuation and token.text.lower() not in stop_words]
+                cleaned_sentence = " ".join(lemmas)
+                all_sentence.append(cleaned_sentence)
 
-        return vectorized_sentence
+        padded_sequences = preprocess_sentences(all_sentence, tokenizer, 29)
+
+        return padded_sequences
 
 
     def get_topics_name(self, product_names):
-        vectors= self.vector_text(product_names)
-        model =CatBoostClassifier()
-        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'catboost.cbm')
-        model.load_model(path)
-        predictions=model.predict(vectors)
+        tokens = tokenize_text(product_names)
+        model = load_model("model_LSTM.h5", custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
+        tf.config.run_functions_eagerly(True)
+        predictions = np.argmax(loaded_model.predict(tokens), axis=1)
         dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
         topics=[]
         for index in range(len(predictions)):
