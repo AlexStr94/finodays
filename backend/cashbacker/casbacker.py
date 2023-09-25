@@ -31,7 +31,7 @@ stop_words = stop_words_rus+stop_words_eng+['каждый день', 'кажды
 
 
 def preprocess_sentences(sentences, tokenizer, max_length):
-    with open('tokenizer_LSTM.pkl', 'rb') as f:
+    with open('new_tokenizer_LSTM.pkl', 'rb') as f:
         tokenizer = pickle.load(f)
         
     sequences = tokenizer.texts_to_sequences(sentences)
@@ -77,7 +77,7 @@ class Cashbacker:
 
     def get_topics_name(self, product_names):
         tokens = tokenize_text(product_names)
-        model = load_model("model_LSTM.h5", custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
+        model = load_model("new_model_LSTM.h5", custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
         tf.config.run_functions_eagerly(True)
         predictions = np.argmax(loaded_model.predict(tokens), axis=1)
         dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
