@@ -80,7 +80,8 @@ class Cashbacker:
         model = load_model("new_model_LSTM.h5", custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
         tf.config.run_functions_eagerly(True)
         predictions = np.argmax(loaded_model.predict(tokens), axis=1)
-        dictionary = { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'нет категории'], "label": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } 
+        dictionary =  { "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника', 'образование'], 
+                       "label": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
         topics=[]
         for index in range(len(predictions)):
           label = predictions[index].item()
