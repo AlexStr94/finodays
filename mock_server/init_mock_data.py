@@ -1,7 +1,7 @@
 import asyncio
 import csv
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from random import choice, choices, randint, randrange
 from string import digits
 from typing import List
@@ -12,16 +12,20 @@ from sqlalchemy.orm import sessionmaker
 
 from models import base as models
 from schemas import base as schemas
-from services.db import (bank_crud, card_crud, cashback_crud, transaction_crud,
+from services.db import (account_crud, bank_crud, card_crud, cashback_crud, transaction_crud,
                          user_cashback_crud, user_crud)
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-database_dsn = os.getenv('DATABASE_DSN')
+database_dsn = os.getenv(
+    'DATABASE_DSN',
+    'postgresql+asyncpg://mock:mock@localhost:5432/mock'
+)
 
 CASHBACK_CATEGORIES = [
     'автозапчасти', 'видеоигры', 'напитки', 'продукты питания',
-    'закуски и приправы', 'аквариум', 'одежда', 'уборка', 'электроника'
+    'закуски и приправы', 'аквариум', 'одежда', 'уборка',
+    'электроника', 'образование'
 ]
 
 engine = create_async_engine(
@@ -32,11 +36,36 @@ async_session = sessionmaker(
 )
 
 
+def generate_account_number() -> str:
+    return '4081' + ''.join(choices(digits, k=16))
+
+
 def generate_card_number() -> str:
     return '2200' + ''.join(choices(digits, k=12))
 
 
-async def generate_card_info(db: AsyncSession, user_id: int, bank_id: int) -> schemas.CardCreate:
+async def generate_account_info(
+    db: AsyncSession,
+    bank_id: int,
+    user_id: int
+) -> schemas.AccountCreate:
+    while True:
+        account_number = generate_account_number()
+        account: models.Account | None = await account_crud.get(
+            db=db, number=account_number
+        )
+        if not account:
+            return schemas.AccountCreate(
+                number=account_number,
+                bank_id=bank_id,
+                user_id=user_id
+            )
+
+
+async def generate_card_info(
+    db: AsyncSession,
+    account_id: int
+) -> schemas.CardCreate:
     while True:
         card_number = generate_card_number()
         card: models.Card | None = await card_crud.get(
@@ -44,19 +73,27 @@ async def generate_card_info(db: AsyncSession, user_id: int, bank_id: int) -> sc
         )
         if not card:
             return schemas.CardCreate(
-                user_id=user_id,
-                bank_id=bank_id,
+                account_id=account_id,
                 card_number=card_number
             )
 
 
-def generate_random_date(start_day: date, num_of_days: int) -> date:
+def generate_random_datetime(
+        start_day: datetime, num_of_days: int
+    ) -> datetime:
     random_num = randrange(num_of_days)
-    return start_day + timedelta(days=random_num)
+    time = start_day + timedelta(
+        days=random_num,
+        hours=randint(1, 24),
+        minutes=randint(1, 60),
+        seconds=randint(1, 60)
+    )
+    return time.replace(tzinfo=timezone.utc)
 
 
 async def init_mock_data() -> None:
     async with async_session() as session:
+        # Создаем категории кэшбека в БД
         cashbacks: List[models.Cashback] = []
         for category in CASHBACK_CATEGORIES:
             cashback = await cashback_crud.create(
@@ -67,6 +104,7 @@ async def init_mock_data() -> None:
             )
             cashbacks.append(cashback)
 
+        # Создаем банки в БД
         banks_not_in_system: List[models.Bank] = []
         banks_in_system: List[models.Bank] = []
 
@@ -89,6 +127,7 @@ async def init_mock_data() -> None:
         num_of_banks_in_system: int = len(banks_in_system)
         num_of_banks_not_in_system: int = len(banks_not_in_system)
 
+        # Создаем пользователей, счета и карты пользователя
         with open(f'{CURRENT_DIR}/data/users.csv', 'r', encoding='utf-8', newline='') as csvfile:
             rows = csv.reader(csvfile)
             for row in rows:
@@ -103,52 +142,79 @@ async def init_mock_data() -> None:
                 )
                 user_in_db: models.User = await user_crud.create(session, user)
 
-                await card_crud.create(
+                # Генерируем счет и карты Центр-инвеста
+                main_bank_account: models.Account = await account_crud.create(
                     db=session,
-                    obj_in=await generate_card_info(
+                    obj_in=await generate_account_info(
                         db=session,
+                        bank_id=main_bank.id,
                         user_id=user_in_db.id,
-                        bank_id=main_bank.id
                     )
                 )
-
-                for i in range(0, randint(1, 2)):
-                    bank_index = randint(0, num_of_banks_not_in_system-1)
+                for i in range(0, 2):
                     await card_crud.create(
                         db=session,
                         obj_in=await generate_card_info(
                             db=session,
-                            user_id=user_in_db.id,
-                            bank_id=banks_not_in_system[bank_index].id
+                            account_id=main_bank_account.id
                         )
                     )
 
-                user_cards_with_cashback: List[models.Card] = []
+                # Генерируем счета и карты банков, не подключенных к системе
+                for i in range(0, randint(1, 2)):
+                    bank_index = randint(0, num_of_banks_not_in_system-1)
+                    bank_account: models.Account = await account_crud.create(
+                        db=session,
+                        obj_in=await generate_account_info(
+                            db=session,
+                            bank_id=banks_not_in_system[bank_index].id,
+                            user_id=user_in_db.id,
+                        )
+                    )
+                    for i in range(0, randint(1, 2)):
+                        await card_crud.create(
+                            db=session,
+                            obj_in=await generate_card_info(
+                                db=session,
+                                account_id=bank_account.id
+                            )
+                        )
 
+                user_accounts_with_cashback: List[models.Card] = []
+
+                # Генерируем счета и карты банков, подключенных к системе частично
                 for i in range(0, randint(1, 2)):
                     bank_index = randint(0, num_of_banks_in_system-1)
-                    card: models.Card = await card_crud.create(
+                    bank_account = await account_crud.create(
                         db=session,
-                        obj_in=await generate_card_info(
+                        obj_in=await generate_account_info(
                             db=session,
+                            bank_id=banks_in_system[bank_index].id,
                             user_id=user_in_db.id,
-                            bank_id=banks_in_system[bank_index].id
                         )
                     )
+                    for i in range(0, randint(1, 2)):
+                        await card_crud.create(
+                            db=session,
+                            obj_in=await generate_card_info(
+                                db=session,
+                                account_id=bank_account.id
+                            )
+                        )
 
-                    user_cards_with_cashback.append(card)
+                    user_accounts_with_cashback.append(bank_account)
 
                 today = date.today() 
                 today = date(year=today.year, month=today.month, day=1)
                 next_month = today  + relativedelta.relativedelta(months=1)
                 
-                for card in user_cards_with_cashback:
-                    card_cashbacks = choices(cashbacks, k=3)
-                    for cashback in card_cashbacks:
+                for account in user_accounts_with_cashback:
+                    account_cashbacks: List[models.Cashback] = choices(cashbacks, k=3)
+                    for cashback in account_cashbacks:
                         await user_cashback_crud.create(
                             db=session,
                             obj_in=schemas.UserCashbackCreate(
-                                card_id=card.id,
+                                account_id=account.id,
                                 cashback_id=cashback.id,
                                 value=randint(3, 10),
                                 month=today
@@ -157,26 +223,35 @@ async def init_mock_data() -> None:
                         await user_cashback_crud.create(
                             db=session,
                             obj_in=schemas.UserCashbackCreate(
-                                card_id=card.id,
+                                account_id=account.id,
                                 cashback_id=cashback.id,
                                 value=randint(3, 10),
                                 month=next_month
                             )
                         )
 
-        # генерируем транзакции для карт
+        # генерируем транзакции для счетов
         with open(f'{CURRENT_DIR}/data/transactions.csv', 'r', encoding='utf-8', newline='') as csvfile:
-            cards: List[models.Card] = await card_crud.all(db=session)
+            accounts: List[models.Account] = await account_crud.all(db=session)
             rows = csv.reader(csvfile)
+            today = date.today()
+            start_transaction_datetime = datetime(
+                year=today.year - 1,
+                month=today.month,
+                day=1
+            )
             for row in rows:
-                card = choice(cards)
+                account = choice(accounts)
                 await transaction_crud.create(
                     db=session,
                     obj_in=schemas.TransactionCreate(
                         name=row[0],
-                        time=generate_random_date(today, 60),
+                        time=generate_random_datetime(
+                            start_transaction_datetime,
+                            365 + today.day
+                        ),
                         value=int(row[1]),
-                        card_id=card.id
+                        account_id=account.id
                     )
                 )
 

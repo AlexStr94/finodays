@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timezone
 from random import choice
 from typing import List
 
@@ -9,7 +9,7 @@ from db.db import get_session
 from exceptions import base as exceptions
 from models import base as models
 from schemas import base as schemas
-from services.db import (card_crud, transaction_crud, user_cashback_crud,
+from services.db import (account_crud, transaction_crud, user_cashback_crud,
                          user_crud)
 
 router = APIRouter()
@@ -43,50 +43,57 @@ async def get_user_by_photo(
     return schemas.User.from_orm(user)
 
 
-@router.post( 
-    '/get_user_cards/',
+@router.get( 
+    '/get_user_accounts/',
     status_code=status.HTTP_200_OK,
-    response_model=List[schemas.Card]
+    response_model=List[schemas.Account]
 )
-async def get_user_cards(
+async def get_user_accounts(
     user_id: int,
     db: AsyncSession = Depends(get_session)
-) -> List[schemas.Card]:
+) -> List[schemas.Account]:
     user: models.User | None = await user_crud.get(db, id=user_id)
     if not user:
         raise exceptions.UserNotFoundException
-    cards: List[models.Card] = await card_crud.filter_by(db, user_id=user_id)
+    accounts: List[models.Account] = await account_crud.filter_by(
+        db=db, with_cards=True,
+        with_bank=True, user_id=user_id
+    )
+
     return [
-        schemas.Card(
-            bank=card.bank.name,
-            card_number=card.card_number
+        schemas.Account(
+            bank=account.bank.name,
+            number=account.number,
+            cards=[
+                schemas.Card(
+                    card_number=card.card_number
+                )
+                for card in account.cards
+            ]
         )
-        for card in cards
+        for account in accounts
     ]
 
 
 @router.post(
-    '/get_card_cashback/',
+    '/get_account_cashbacks/',
     status_code=status.HTTP_200_OK,
+    response_model=schemas.AccountWithCashbacks
 )
-async def get_card_cashback(
-    card_number: str,
-    bank_name: str,
-    month: date,
+async def get_account_cashback(
+    account: schemas.AccountRequest,
     db: AsyncSession = Depends(get_session)
-):
-    cashbacks = await user_cashback_crud.card_cashbacks(
+) -> schemas.AccountWithCashbacks:
+    cashbacks = await user_cashback_crud.account_cashbacks(
         db=db,
-        card_number=card_number,
-        month=month
+        account_number=account.account_number,
+        month=account.month
     )
     
-    return schemas.CardWithCashbacks(
-        bank=bank_name,
-        card_number=card_number,
-        month=month,
+    return schemas.AccountWithCashbacks(
+        month=account.month,
         cashbacks=[
-            schemas.CardCashback(
+            schemas.AccountCashback(
                 product_type=cashback.cashback.product_type,
                 value=cashback.value
             )
@@ -96,38 +103,21 @@ async def get_card_cashback(
 
 
 @router.post(
-    '/get_card_cashback_and_transactions/',
+    '/get_account_transactions/',
     status_code=status.HTTP_200_OK,
+    response_model=schemas.AccountWithTransactions
 )
-async def get_card_cashback_and_transactions(
-    card_number: str,
-    bank_name: str,
-    month: date,
+async def get_account_transactions(
+    data: schemas.TransactionsRequest,
     db: AsyncSession = Depends(get_session)
-) -> schemas.CardWithCashbacksandTransactions:
-    cashbacks = await user_cashback_crud.card_cashbacks(
-        db=db,
-        card_number=card_number,
-        month=month
+) -> schemas.AccountWithTransactions:
+    transactions = await transaction_crud.get_account_transactions(
+        db=db, account_number=data.account_number,
+        start_datetime=data.start_datetime
     )
 
-    transactions: List[models.Transaction] = await transaction_crud.get_card_transactions(
-        db=db,
-        card_number=card_number,
-        month=month
-    )
-
-    return schemas.CardWithCashbacksandTransactions(
-        bank=bank_name,
-        card_number=card_number,
-        month=month,
-        cashbacks=[
-            schemas.CardCashback(
-                product_type=cashback.cashback.product_type,
-                value=cashback.value
-            )
-            for cashback in cashbacks
-        ],
+    return schemas.AccountWithTransactions(
+        number=data.account_number,
         transactions=[
             schemas.Transaction.from_orm(transaction)
             for transaction in transactions

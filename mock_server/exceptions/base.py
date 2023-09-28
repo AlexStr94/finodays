@@ -13,11 +13,11 @@ class UserNotFoundException(HTTPException):
         )
 
 
-class CardNotFoundException(HTTPException):
+class AccountNotFoundException(HTTPException):
     def __init__(
         self,
         status_code: int = status.HTTP_204_NO_CONTENT,
-        detail: str = 'Card with this params doesn\'t exist'
+        detail: str = 'Account with this params doesn\'t exist'
     ) -> None:
         super().__init__(
             status_code=status_code,
