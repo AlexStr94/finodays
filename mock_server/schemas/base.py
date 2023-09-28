@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import List
 
 from pydantic import BaseModel
@@ -8,6 +8,12 @@ class BankCreate(BaseModel):
     name: str
     in_system: bool
     allow_cashback_choose: bool
+
+
+class AccountCreate(BaseModel):
+    number: str
+    bank_id: int
+    user_id: int
 
 
 class UserCreate(BaseModel):
@@ -28,44 +34,59 @@ class User(UserCreate):
 
 
 class CardCreate(BaseModel):
-    user_id: int
-    bank_id: int
     card_number: str
+    account_id: int
 
 
 class Card(BaseModel):
-    bank: str
     card_number: str
 
 
-class CardCashback(BaseModel):
+class Account(BaseModel):
+    bank: str
+    number: str
+    cards: List[Card]
+
+
+class AccountRequest(BaseModel):
+    account_number: str
+    month: date
+
+
+class AccountCashback(BaseModel):
     product_type: str
     value: int
 
 
-class CardWithCashbacks(Card):
+class AccountWithCashbacks(BaseModel):
     month: date
-    cashbacks: List[CardCashback]
+    cashbacks: List[AccountCashback]
+
+
+class TransactionsRequest(BaseModel):
+    account_number: str
+    start_datetime: datetime | None
 
 
 class TransactionCreate(BaseModel):
     name: str
-    time: date
+    time: datetime
     value: int
-    card_id: int
+    account_id: int
 
 
 class Transaction(BaseModel):
     id: int
     name: str
-    time: date
+    time: datetime
     value: int
 
     class Config:
         orm_mode = True
-    
 
-class CardWithCashbacksandTransactions(CardWithCashbacks):
+
+class AccountWithTransactions(BaseModel):
+    number: str
     transactions: List[Transaction]
 
 
@@ -74,7 +95,7 @@ class CashbackCreate(BaseModel):
 
 
 class UserCashbackCreate(BaseModel):
-    card_id: int
+    account_id: int
     cashback_id: int
     value: int
     month: date

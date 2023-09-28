@@ -66,27 +66,9 @@ async def get_current_user(
         ebs=user_in_db.ebs
     )
 
-async def authenticate_user(
-    db: AsyncSession,
-    username: str,
-    password: str
-) -> schemas.GosuslugiUser | None:
-    """
-    Заглушка для получения информации о
-    пользователи с сайта госуслуг
-    """
-    counter = await user_crud.count_users(db)
 
-    return schemas.GosuslugiUser(
-        first_name='Иван',
-        # middle_name='Иванович',
-        surname=f'Иванов_{counter+1}',
-        gosuslugi_id=str(counter+1),
-        ebs=True
-    )
-
-def get_user_by_photo(photo)-> schemas.GosuslugiUser:
-    return schemas.GosuslugiUser(
+def get_user_by_photo(photo)-> schemas.User:
+    return schemas.User(
         first_name='Иван',
         # middle_name='Иванович',
         surname='Иванов_1',
@@ -95,23 +77,3 @@ def get_user_by_photo(photo)-> schemas.GosuslugiUser:
     )
 
 
-def get_cards(gosuslugi_id: str) -> List[schemas.LiteCard]:
-    """
-    Заглушка для получения информации о
-    картах пользователя от банка
-    """
-
-    return [
-        schemas.LiteCard(
-            bank='Центр-инвест',
-            card_number=f'1234567812345{gosuslugi_id}'
-        ),
-        schemas.LiteCard(
-            bank='Тинькофф',
-            card_number=f'1234567812545{gosuslugi_id}'
-        ),
-        schemas.LiteCard(
-            bank='ВТБ',
-            card_number=f'1234567812349{gosuslugi_id}'
-        )
-    ]

@@ -1,15 +1,14 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Generic, List, Type, TypeVar
 
-from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import extract, select
+from sqlalchemy import select
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from db.db import Base
-from exceptions.base import CardNotFoundException
+from exceptions.base import AccountNotFoundException
 from models import base as models
 from schemas import base as schemas
 
@@ -50,7 +49,7 @@ class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType]):
             db: AsyncSession,
             obj_in: CreateSchemaType
         ) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
+        obj_in_data = obj_in.dict()
         db_obj = self._model(**obj_in_data)
         db.add(db_obj)
         await db.commit()
@@ -79,30 +78,45 @@ class RepositoryDB(Repository, Generic[ModelType, CreateSchemaType]):
         
 
 class RepositoryUser(RepositoryDB[models.User, schemas.UserCreate]):
-    async def create(
-            self,
-            db: AsyncSession,
-            obj_in: schemas.UserCreate
-        ) -> models.User:
-        birth_date = obj_in.birth_date
-        obj_in_data = jsonable_encoder(obj_in)
-        obj_in_data['birth_date'] = birth_date
-        db_obj = self._model(**obj_in_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+    pass
     
 
 class RepositoryBank(RepositoryDB[models.Bank, schemas.BankCreate]):
     pass
 
 
+class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate]):
+    async def filter_by(
+            self,
+            db: AsyncSession,
+            with_bank: bool = False,
+            with_cards: bool = False,
+            with_cashbacks: bool = False,
+            with_transactions: bool = False,
+            **kwargs
+        ) -> List[models.Account]:
+        statement = select(self._model).filter_by(**kwargs)
+        if with_cards:
+            statement = statement \
+                .options(selectinload(self._model.cards))
+        if with_bank:
+            statement = statement \
+                .options(selectinload(self._model.bank))
+        if with_cashbacks:
+            statement = statement \
+                .options(selectinload(self._model.cashbacks))
+        if with_transactions:
+            statement = statement \
+                .options(selectinload(self._model.transactions))
+        results = await db.execute(statement=statement)
+        lst = results.scalars().all()
+        return lst
+
+
 class RepositoryCard(RepositoryDB[models.Card, schemas.CardCreate]):
     async def filter_by(self, db: AsyncSession, **kwargs) -> List[models.Card]:
         statement = select(self._model) \
-            .filter_by(**kwargs) \
-            .options(selectinload(self._model.bank))
+            .filter_by(**kwargs)
         results = await db.execute(statement=statement)
         lst = results.scalars().all()
         return lst
@@ -116,37 +130,23 @@ class RepositoryCashback(
 
 class RepositoryUserCashback(
     RepositoryDB[models.UserCashback, schemas.UserCashbackCreate]
-):
-    async def create(
-            self,
-            db: AsyncSession,
-            obj_in: schemas.UserCashbackCreate
-        ) -> models.UserCashback:
-        month = obj_in.month
-        obj_in_data = jsonable_encoder(obj_in)
-        obj_in_data['month'] = month
-        db_obj = self._model(**obj_in_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
-    
-    async def card_cashbacks(
+):   
+    async def account_cashbacks(
         self,
         db: AsyncSession,
-        card_number: str,
+        account_number: str,
         month: date
     ):
-        card: models.Card | None = await card_crud.get(
-            db=db, card_number=card_number
+        account: models.Account | None = await account_crud.get(
+            db=db, number=account_number
         )
 
-        if not card:
-            raise CardNotFoundException
+        if not account:
+            raise AccountNotFoundException
         
         statement = select(self._model) \
             .where(
-                self._model.card == card,
+                self._model.account == account,
                 self._model.month == month
             ) \
             .options(selectinload(self._model.cashback))
@@ -157,40 +157,27 @@ class RepositoryUserCashback(
 
 class RepositoryTransaction(
     RepositoryDB[models.Transaction, schemas.TransactionCreate]
-):
-    async def create(
-            self, db: AsyncSession,
-            obj_in: schemas.TransactionCreate
-        ) -> models.Transaction:
-        time = obj_in.time
-        obj_in_data = jsonable_encoder(obj_in)
-        obj_in_data['time'] = time
-        db_obj = self._model(**obj_in_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
-    
-    async def get_card_transactions(
+):    
+    async def get_account_transactions(
         self,
         db: AsyncSession,
-        card_number: str,
-        month: date
+        account_number: str,
+        start_datetime: datetime | None
     ) -> List[models.Transaction]:
-        card: models.Card | None = await card_crud.get(
-            db=db, card_number=card_number
+        account: models.Card | None = await account_crud.get(
+            db=db, number=account_number
         )
 
-        if not card:
-            raise CardNotFoundException
+        if not account:
+            raise AccountNotFoundException
         
         statement = select(self._model) \
-            .where(self._model.card == card) \
-            .filter(
-                extract('month', self._model.time) == month.month,
-                extract('year', self._model.time) == month.year,
-            ) \
-            .order_by(self._model.time)
+            .filter(self._model.account == account) 
+        
+        if start_datetime:
+            statement = statement.filter(self._model.time > start_datetime)
+            
+        statement = statement.order_by(self._model.time)
             
         results = await db.execute(statement=statement)
         return results.scalars().all()
@@ -198,6 +185,7 @@ class RepositoryTransaction(
 
 user_crud = RepositoryUser(models.User)
 bank_crud = RepositoryBank(models.Bank)
+account_crud = RepositoryAccount(models.Account)
 card_crud = RepositoryCard(models.Card)
 cashback_crud = RepositoryCashback(models.Cashback)
 user_cashback_crud = RepositoryUserCashback(models.UserCashback)
