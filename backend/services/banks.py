@@ -1,7 +1,7 @@
 from typing import List
 
-from models import base as models
 from cashbacker.fake_transactions import get_fake_transactions
+from models import base as models
 
 
 def get_card_transactions(card: models.Card):

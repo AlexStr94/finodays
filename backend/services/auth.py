@@ -1,18 +1,17 @@
 from datetime import datetime, timedelta
-from typing import Annotated, List
+from typing import Annotated
+
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
-from db.db import get_session
-from exceptions.auth import CredentialException
+from passlib.context import CryptContext
 
 from core.config import app_settings
-from schemas import base as schemas
+from db.db import get_session
+from exceptions.auth import CredentialException
 from models import base as models
+from schemas import base as schemas
 from services.db import user_crud
 
 SECRET_KEY = app_settings.secret_key
@@ -23,14 +22,6 @@ ACCESS_TOKEN_EXPIRE_DAYS = 7
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/v1/auth')
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def create_access_token(data: dict, expires_delta: timedelta):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + expires_delta
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
 
 def create_access_token(data: dict, expires_delta: timedelta):
@@ -65,15 +56,3 @@ async def get_current_user(
         gosuslugi_id=user_in_db.gosuslugi_id,
         ebs=user_in_db.ebs
     )
-
-
-def get_user_by_photo(photo)-> schemas.User:
-    return schemas.User(
-        first_name='Иван',
-        # middle_name='Иванович',
-        surname='Иванов_1',
-        gosuslugi_id='1',
-        ebs=True
-    )
-
-

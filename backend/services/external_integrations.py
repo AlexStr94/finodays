@@ -1,18 +1,19 @@
-from datetime import date, datetime, timedelta, timezone
 import json
 import os
+from datetime import date, datetime, timedelta, timezone
 from typing import List
-import aiohttp
-import requests
 
-from dotenv import load_dotenv
+import aiohttp
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 from core.config import BASE_DIR
+from dotenv import load_dotenv
 from models import base as models
 from schemas import base as schemas
-from .db import account_crud, card_crud, cashback_crud, user_cashback_crud, transaction_crud
 
+from .db import (account_crud, card_crud, cashback_crud, transaction_crud,
+                 user_cashback_crud)
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
@@ -32,55 +33,50 @@ async def authenticate_user(
         'password': password
     }
 
-    # Можно переписать на асинхронные запросы
-    response = requests.post(
-        url,
-        json=data,
-        headers={"Content-Type": "application/json; charset=utf-8"},
-    )
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            if response.status == 200:
+                user_dict = json.loads(await response.text())
+                user_dict['gosuslugi_id'] = user_dict.get('id')
 
-    if response.status_code == 200:
-        user_dict = json.loads(response.text)
-        user_dict['gosuslugi_id'] = user_dict.get('id')
-
-        return schemas.User(**user_dict)
+                return schemas.User(**user_dict)
     
     return None
 
-def get_user_by_photo(photo)-> schemas.User:
-    return schemas.User(
-        first_name='Иван',
-        # middle_name='Иванович',
-        surname='Иванов_1',
-        gosuslugi_id='1',
-        ebs=True
+
+async def get_user_by_photo(photo)-> schemas.User:
+    """
+        Эмуляция получения информации о пользователи из ЕБС
+        по фото
+    """
+    user_info: schemas.User | None = await authenticate_user(
+        'username', 'password'
     )
+    return user_info
 
 
-def get_accounts(gosuslugi_id: str) -> List[schemas.RawAccount] | None:
+async def get_accounts(gosuslugi_id: str) -> List[schemas.RawAccount] | None:
     """
     Эмуляция получения информации о
     счетах и картах пользователя от НСПК
     """
 
     url = os.getenv('GET_USER_ACOOUNTS_FROM_NSPK_LINK')
+    url = f'{url}?user_id={gosuslugi_id}'
 
-    response = requests.get(
-        f'{url}?user_id={gosuslugi_id}',
-        headers={"Content-Type": "application/json; charset=utf-8"},
-    )
-
-    if response.status_code == 200:
-        accounts = json.loads(response.text)
-        return [
-            schemas.RawAccount(**account)
-            for account in accounts
-        ]
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                accounts = json.loads(await response.text())
+                return [
+                    schemas.RawAccount(**account)
+                    for account in accounts
+                ]
     
     return None
 
 
-def get_account_cashbacks(
+async def get_account_cashbacks(
     account_number: str,
     month: date
 ) -> schemas.RawAccountCashbacks | None:
@@ -91,15 +87,11 @@ def get_account_cashbacks(
         'month': month.strftime('%Y-%m-%d')
     }
 
-    response = requests.post(
-        url,
-        json=data,
-        headers={"Content-Type": "application/json; charset=utf-8"},
-    )
-
-    if response.status_code == 200:
-        cashbacks_dict = json.loads(response.text)
-        return schemas.RawAccountCashbacks(**cashbacks_dict)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            if response.status == 200:
+                cashbacks_dict = json.loads(await response.text())
+                return schemas.RawAccountCashbacks(**cashbacks_dict)
 
     return None
 
@@ -129,7 +121,7 @@ async def create_or_update_account_in_db(
 
     account_cashbacks_info: schemas.RawAccountCashbacks | None = None
 
-    account_cashbacks_info = get_account_cashbacks(
+    account_cashbacks_info = await get_account_cashbacks(
         account_number=account_in_db.number,
         month=month
     )
@@ -178,10 +170,10 @@ async def update_account_transactions(
     db: AsyncSession, account: models.Account
 ) -> None:
     # Будем обновлять не чаще чем раз в 30 минут
-    # last_update: datetime | None = account.transations_update_time
-    # now = datetime.utcnow()
-    # if last_update and (now - last_update > timedelta(minutes=30)):
-    #     return
+    last_update: datetime | None = account.transations_update_time
+    now = datetime.utcnow()
+    if last_update and (now - last_update > timedelta(minutes=30)):
+        return
     
     last_transation_time = account.last_transation_time
     if last_transation_time:
@@ -233,8 +225,6 @@ async def update_account_transactions(
                             last_transation_time=last_transation_time
                         )
                     )
-            print(account.last_transation_time)
-            print(account.transations_update_time)
 
                 
 async def update_user_transactions(db: AsyncSession, user_id: int):

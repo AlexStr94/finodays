@@ -1,24 +1,20 @@
 import os
-from typing import List
 from collections import Counter
-
-from schemas import base as schemas
-from models import base as models
+from string import punctuation
+from typing import List
 
 import nltk
-from nltk.corpus import stopwords
-from string import punctuation
 import spacy
-from langdetect import detect
-
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
-from keras.models import load_model
-
-import tensorflow_addons as tfa
 import tensorflow as tf
-
-from services.banks import get_categories_values, get_card_transactions
+import tensorflow_addons as tfa
+from keras.models import load_model
+from keras.preprocessing.sequence import pad_sequences
+from keras.preprocessing.text import Tokenizer
+from langdetect import detect
+from models import base as models
+from nltk.corpus import stopwords
+from schemas import base as schemas
+from services.banks import get_card_transactions, get_categories_values
 
 nltk.download('stopwords')
 
@@ -52,7 +48,7 @@ class Cashbacker:
     def __init__(self, card:models.Card):
         self.card = card
     
-     def tokenize_text(products):
+    def tokenize_text(products):
 
         all_sentence = []
 
