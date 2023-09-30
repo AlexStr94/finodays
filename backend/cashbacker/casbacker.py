@@ -52,7 +52,7 @@ class Cashbacker:
     def __init__(self, card:models.Card):
         self.card = card
     
-     def tokenize_text(products):
+    def tokenize_text(products):
 
         all_sentence = []
 
