@@ -29,7 +29,12 @@ nlp_rus = spacy.load('ru_core_news_sm', disable=['ner', 'parser'])
 
 stop_words_rus = stopwords.words('russian')
 stop_words_eng = stopwords.words('english')
-stop_words = stop_words_rus+stop_words_eng+['каждый день', 'каждый', 'день', 'красная цена', 'красная', 'цена', 'верный', 'дикси', 'моя', 'моя цена', 'окей','то, что надо!', 'smart','spar', 'ашан']
+stop_words = stop_words_rus+stop_words_eng+['каждый день', 
+                                            'каждый', 'день', 'красная цена', 'красная', 'цена', 
+                                            'верный', 'дикси', 'моя', 'моя цена', 'окей','то, что надо!', 
+                                            'smart','spar', 'ашан']
+
+best_look_back = 22
     
 
 def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
