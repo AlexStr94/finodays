@@ -104,13 +104,13 @@ class Categories:
         self.cashback_model = load_model("cashbacker/spendings.h5")
 
     def add_time_features(self, df):
+        df['date'] = pd.to_datetime(df['date'])
         df['month'] = df['date'].dt.month
         df['year'] = df['date'].dt.year
         df['season'] = (df['month'] % 12 + 3) // 3  # 1: зима, 2: весна, 3: лето, 4: осень
         return df
 
     def get_dataframe(self, data):
-        data['date'] = pd.to_datetime(data['date'])
         new_data = self.add_time_features(data)
         data_grouped = new_data.groupby(['client', 'year', 'month', 'season', 'topic']).agg(
             {'price': 'sum'}).reset_index()
