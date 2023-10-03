@@ -114,18 +114,38 @@ class Categories:
         df['season'] = (df['month'] % 12 + 3) // 3  # 1: зима, 2: весна, 3: лето, 4: осень
         return df
 
-
     def get_dataframe(self, data):
+        topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование',
+                  'одежда', 'продукты питания', 'уборка', 'электроника']
+
         data['date'] = pd.to_datetime(data['date'])
         new_data = self.add_time_features(data)
-        data_grouped = new_data.groupby(['client', 'year', 'month', 'season', 'topic']).agg({'price': 'sum'}).reset_index()
-        data_grouped = data_grouped.pivot_table(index=['year', 'month', 'season'], columns='topic', values='price', fill_value=0).reset_index()
-        data_grouped = data_grouped.drop(columns=['year', 'month', 'season'])
-        return data_grouped
+
+        data_grouped = new_data.groupby(['client', 'year', 'month', 'season', 'topic']).agg(
+            {'price': 'sum'}).reset_index()
+        data_grouped = data_grouped.pivot_table(index=['year', 'month', 'season'], columns='topic', values='price',
+                                                fill_value=0).reset_index(drop=True)
+
+        data_grouped = data_grouped.reindex(columns=topics, fill_value=0)
+
+        num_rows_needed = best_look_back - len(data_grouped)
+
+        if num_rows_needed > 0:
+            if len(data_grouped) > 0:
+                median_values = data_grouped.median()
+                for _ in range(num_rows_needed):
+                    data_grouped = pd.concat([pd.DataFrame([median_values], columns=topics), data_grouped]).reset_index(
+                        drop=True)
+            else:
+                random_values = {topic: np.random.randint(100, 200) for topic in topics}
+                for _ in range(num_rows_needed):
+                    data_grouped = pd.concat([pd.DataFrame([random_values], columns=topics), data_grouped]).reset_index(
+                        drop=True)
+
+        return data_grouped[topics]
 
 
     def cashbaks_for_user(self, data):
-
 
         categories = pd.DataFrame()
         topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование', 
