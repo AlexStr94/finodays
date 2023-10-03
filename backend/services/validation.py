@@ -47,7 +47,7 @@ class RevisitResNet50Inference(tf.keras.Model):
 inference_model = RevisitResNet50Inference()
 
 # Загружаем веса из файлов cp.ckpt.index и cp.ckpt.data-00000-of-00001
-checkpoint_path = 'mobilenetv2/cp.ckpt.index'
+checkpoint_path = 'services/mobilenetv2/cp.ckpt.index'
 ckpt = tf.train.Checkpoint(model=inference_model)
 ckpt.restore(checkpoint_path).expect_partial()
 

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from tests.config import app
 
+from cashbacker.casbacker import Cashbacker, Categories
 
 TEST_USER = {
     'username': 'alex',
@@ -32,3 +33,15 @@ def get_account_number(get_client, get_client_credentials):
     assert response.status_code == 200
     account_number = response.json()[0].get('account_number')
     return account_number
+
+
+@pytest.fixture(scope='session')
+def get_cashbacker():
+    cashbacker = Cashbacker()
+    return cashbacker
+
+
+@pytest.fixture(scope='session')
+def get_categories():
+    categories = Categories()
+    return categories

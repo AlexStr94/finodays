@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from sklearn.preprocessing import StandardScaler
 
-
 nltk.download('stopwords')
 
 nlp_eng = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
@@ -28,13 +27,13 @@ nlp_rus = spacy.load('ru_core_news_sm', disable=['ner', 'parser'])
 
 stop_words_rus = stopwords.words('russian')
 stop_words_eng = stopwords.words('english')
-stop_words = stop_words_rus+stop_words_eng+['каждый день', 
-                                            'каждый', 'день', 'красная цена', 'красная', 'цена', 
-                                            'верный', 'дикси', 'моя', 'моя цена', 'окей', 'то, что надо!',
-                                            'smart', 'spar', 'ашан']
+stop_words = stop_words_rus + stop_words_eng + ['каждый день',
+                                                'каждый', 'день', 'красная цена', 'красная', 'цена',
+                                                'верный', 'дикси', 'моя', 'моя цена', 'окей', 'то, что надо!',
+                                                'smart', 'spar', 'ашан']
 
 best_look_back = 22
-    
+
 
 def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
     string_counts = Counter(strings)
@@ -47,17 +46,16 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
 
 class Cashbacker:
     def __init__(self):
-        self.topic_model = load_model("new_model_LSTM.h5", custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
-        with open('new_tokenizer_LSTM.pkl', 'rb') as f:
+        self.topic_model = load_model("cashbacker/new_model_LSTM.h5",
+                                      custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
+        with open('cashbacker/new_tokenizer_LSTM.pkl', 'rb') as f:
             self.tokenizer = pickle.load(f)
-        
 
     def preprocess_sentences(self, sentences, max_length):
         sequences = self.tokenizer.texts_to_sequences(sentences)
         padded_sequences = pad_sequences(sequences, maxlen=max_length, padding='post', truncating='post')
         return padded_sequences
-    
-    
+
     def tokenize_text(self, products):
 
         all_sentence = []
@@ -78,10 +76,9 @@ class Cashbacker:
                 cleaned_sentence = " ".join(lemmas)
                 all_sentence.append(cleaned_sentence)
 
-        padded_sequences = self.preprocess_sentences(all_sentence, 29)
+        padded_sequences = self.preprocess_sentences(all_sentence, 21)
 
         return padded_sequences
-
 
     def get_topics_name(self, product_names):
         tokens = self.tokenize_text(product_names)
@@ -99,14 +96,12 @@ class Cashbacker:
             topic = dictionary['topic'][dictionary['label'].index(label)]
             topics.append(topic)
         return topics
-        
+
 
 class Categories:
 
-
     def __init__(self):
-        self.cashback_model = load_model("spendings.h5")
-
+        self.cashback_model = load_model("cashbacker/spendings.h5")
 
     def add_time_features(self, df):
         df['month'] = df['date'].dt.month
@@ -114,50 +109,50 @@ class Categories:
         df['season'] = (df['month'] % 12 + 3) // 3  # 1: зима, 2: весна, 3: лето, 4: осень
         return df
 
-
     def get_dataframe(self, data):
         data['date'] = pd.to_datetime(data['date'])
         new_data = self.add_time_features(data)
-        data_grouped = new_data.groupby(['client', 'year', 'month', 'season', 'topic']).agg({'price': 'sum'}).reset_index()
-        data_grouped = data_grouped.pivot_table(index=['year', 'month', 'season'], columns='topic', values='price', fill_value=0).reset_index()
+        data_grouped = new_data.groupby(['client', 'year', 'month', 'season', 'topic']).agg(
+            {'price': 'sum'}).reset_index()
+        data_grouped = data_grouped.pivot_table(index=['year', 'month', 'season'], columns='topic', values='price',
+                                                fill_value=0).reset_index()
         data_grouped = data_grouped.drop(columns=['year', 'month', 'season'])
         return data_grouped
 
-
     def cashbaks_for_user(self, data):
-    
+
         categories = pd.DataFrame()
-        topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование', 
+        topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование',
                   'одежда', 'продукты питания', 'уборка', 'электроника']
-        
+
         df = self.get_dataframe(data)
-    
+
         scaler = StandardScaler().fit(df.values)
         final_scaled_train = scaler.transform(df.values)
 
         x_test = final_scaled_train[-best_look_back:].reshape(1, best_look_back, -1)
-    
+
         model = self.cashback_model
         predictions = model.predict(x_test)
         predictions_original = scaler.inverse_transform(predictions)
-        
+
         for index in range(len(topics)):
             categories.loc[index, 'topics'] = topics[index]
             categories.loc[index, 'predictions'] = predictions_original[0][index]
-            
+
         top = categories.sort_values(by='predictions', ascending=False).head(5).reset_index(drop=True)
-        
+
         top.loc[0, 'percent'] = 10
         top.loc[4, 'percent'] = 3
-        
+
         min_val = top.loc[4, 'predictions']
         max_val = top.loc[0, 'predictions']
-    
+
         # Рассчёт пропорциональных значений для 2, 3 и 4 мест
         for i in range(1, 4):
             proportion = (top.loc[i, 'predictions'] - min_val) / (max_val - min_val)
             top.loc[i, 'percent'] = round(3 + proportion * (10 - 3))
-    
+
         cashbacks = top[['topics', 'percent']]
-        
+
         return cashbacks
