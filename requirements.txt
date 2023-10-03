@@ -89,7 +89,7 @@ SQLAlchemy-Utils==0.38.3
 srsly==2.4.7
 starlette==0.27.0
 tenacity==8.2.3
-tensorflow==2.13.0
+tensorflow==2.14.0
 tensorflow_addons==0.21.0
 thinc==8.1.12
 threadpoolctl==3.2.0

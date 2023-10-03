@@ -23,3 +23,12 @@ def get_client_credentials(get_client):
     assert response.status_code == 200
     access_token = response.json().get('access_token')
     return access_token
+
+
+@pytest.fixture(scope='session')
+def get_account_number(get_client, get_client_credentials):
+    headers = {'Authorization': f'Bearer {get_client_credentials}'}
+    response = get_client.get(app.url_path_for('get_cards_list'), headers=headers)
+    assert response.status_code == 200
+    account_number = response.json()[0].get('account_number')
+    return account_number

@@ -225,7 +225,7 @@ async def get_cashback_for_choose(
             can_choose_cashback=can_choose_cashback(account)
         )
     
-    raise HTTPException # нормальный exception сделать
+    raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.post(
