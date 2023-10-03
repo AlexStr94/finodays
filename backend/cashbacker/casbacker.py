@@ -5,10 +5,11 @@ import pandas as pd
 import numpy as np
 
 import nltk
+from nltk.corpus import stopwords
+from string import punctuation
 import spacy
-import tensorflow as tf
-import tensorflow_addons as tfa
-from keras.models import load_model
+from langdetect import detect
+
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 import pickle
