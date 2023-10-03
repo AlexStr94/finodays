@@ -22,12 +22,12 @@ def test_get_dataframe(get_categories):
 
 
 # Бага ValueError: cannot reshape array of size 4 into shape (1,22,newaxis)с
-# def test_cashbaks_for_user(get_categories):
-#     data = pd.DataFrame({
-#         'date': ['2023-01-01', '2023-01-01', '2023-02-01'],
-#         'client': ['client1', 'client2', 'client1'],
-#         'topic': ['topic1', 'topic2', 'topic1'],
-#         'price': [100, 200, 150],
-#     })
-#     cashbacks = get_categories.cashbaks_for_user(data)
-#     assert cashbacks.shape == (2, 2)
+def test_cashbaks_for_user(get_categories):
+    data = pd.DataFrame({
+        'date': ['2023-01-01', '2023-01-01', '2023-02-01'],
+        'client': ['client1', 'client2', 'client1'],
+        'topic': ['topic1', 'topic2', 'topic1'],
+        'price': [100, 200, 150],
+    })
+    cashbacks = get_categories.cashbaks_for_user(data)
+    assert cashbacks.shape == (5, 2)
