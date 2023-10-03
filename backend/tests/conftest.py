@@ -45,3 +45,10 @@ def get_cashbacker():
 def get_categories():
     categories = Categories()
     return categories
+
+
+@pytest.fixture(scope='session')
+def get_spoofing_image():
+    with open('tests/files/portret.jpg', 'rb') as file:
+        image_data = file.read()
+    return image_data
