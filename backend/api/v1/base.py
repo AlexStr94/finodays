@@ -36,11 +36,12 @@ async def terminal(
     file_in: UploadFile,
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
-    photo_validation = validate_photo(file_in)
+    photo: bytes = await file_in.read()
+    photo_validation = await validate_photo(photo)
     if not photo_validation:
         raise auth_exceptions.AntiSpoofingException()
-    # чуть позже переделаю
-    user_info: schemas.User = await get_user_by_photo(file_in)
+    
+    user_info: schemas.User = await get_user_by_photo(photo, file_in.filename)
 
     if user_info:
 

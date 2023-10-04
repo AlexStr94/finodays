@@ -1,6 +1,8 @@
+import os
+from fastapi import UploadFile
 import tensorflow as tf
-from tensorflow.keras import layers, Model
-from tensorflow.keras.applications import MobileNetV2
+from keras import layers
+from keras.applications import MobileNetV2
 
 IMG_SHAPE = (256, 256, 3)
 
@@ -47,14 +49,16 @@ class RevisitResNet50Inference(tf.keras.Model):
 inference_model = RevisitResNet50Inference()
 
 # Загружаем веса из файлов cp.ckpt.index и cp.ckpt.data-00000-of-00001
-checkpoint_path = 'mobilenetv2/cp.ckpt.index'
+checkpoint_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'mobilenetv2/cp.ckpt.index'
+)
 ckpt = tf.train.Checkpoint(model=inference_model)
 ckpt.restore(checkpoint_path).expect_partial()
 
 
 # Функция для инференса на бинарных данных изображения
-def infer_image(formData):
-    image = tf.image.decode_image(formData)
+def infer_image(image):
+    image = tf.image.decode_image(image)
     image = tf.image.resize(image, IMG_SHAPE[:2])
     image = tf.keras.applications.mobilenet_v2.preprocess_input(image)
     image = tf.expand_dims(image, axis=0)
@@ -64,8 +68,8 @@ def infer_image(formData):
     return predictions.numpy()[0][0]
 
 
-def validate_photo(photo) -> bool:
-    predictions = infer_image(photo)
+async def validate_photo(image: bytes) -> bool:
+    predictions = infer_image(image)
     if predictions > 0.5:
         return True
     return False

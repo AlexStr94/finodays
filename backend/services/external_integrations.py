@@ -4,16 +4,15 @@ from datetime import date, datetime, timedelta, timezone
 from typing import List
 
 import aiohttp
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from core.config import BASE_DIR
-from dotenv import load_dotenv
+from .db import (account_crud, card_crud, cashback_crud, transaction_crud,
+                 user_cashback_crud)
 from models import base as models
 from schemas import base as schemas
 
-from .db import (account_crud, card_crud, cashback_crud, transaction_crud,
-                 user_cashback_crud)
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
@@ -44,15 +43,25 @@ async def authenticate_user(
     return None
 
 
-async def get_user_by_photo(photo)-> schemas.User:
+async def get_user_by_photo(photo: bytes, photo_name: str)-> schemas.User:
     """
         Эмуляция получения информации о пользователи из ЕБС
         по фото
     """
-    user_info: schemas.User | None = await authenticate_user(
-        'username', 'password'
-    )
-    return user_info
+    url = os.getenv('GET_USER_ACOOUNTS_FROM_EBS_LINK')
+
+    formdata = aiohttp.FormData()
+    formdata.add_field('file_in', photo, filename=photo_name)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=formdata) as response:
+            if response.status == 200:
+                user_dict = json.loads(await response.text())
+                user_dict['gosuslugi_id'] = user_dict.get('id')
+
+                return schemas.User(**user_dict)
+    
+    return None
 
 
 async def get_accounts(gosuslugi_id: str) -> List[schemas.RawAccount] | None:
