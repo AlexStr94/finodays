@@ -1,5 +1,3 @@
-# import pytest
-
 from tests.config import app
 from tests.conftest import TEST_USER
 
@@ -25,12 +23,11 @@ def test_get_transactions(get_client, get_client_credentials):
 
 
 # Здесь 404 ошибка
-# def test_get_cashback_for_choose(get_client, get_client_credentials, get_account_number):
-#     headers = {'Authorization': f'Bearer {get_client_credentials}'}
-#
-#     # pytest.set_trace()
-#     response = get_client.get(f'{app.url_path_for("get_cashback_for_choose")}?account_number={get_account_number}',
-#                               headers=headers)
-#
-#     assert response.status_code == 202
-#     assert 'cashbacks' in response.json()[0]
+def test_get_cashback_for_choose(get_client, get_client_credentials, get_account_number):
+    headers = {'Authorization': f'Bearer {get_client_credentials}'}
+
+    response = get_client.get(f'{app.url_path_for("get_cashback_for_choose")}?account_number={get_account_number}',
+                              headers=headers)
+
+    assert response.status_code == 202
+    assert 'cashbacks' in response.json().keys()

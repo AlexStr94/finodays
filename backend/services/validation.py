@@ -68,7 +68,7 @@ def infer_image(image):
     return predictions.numpy()[0][0]
 
 
-async def validate_photo(image: bytes) -> bool:
+def validate_photo(image: bytes) -> bool:
     predictions = infer_image(image)
     if predictions > 0.5:
         return True

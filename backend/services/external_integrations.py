@@ -180,7 +180,8 @@ async def update_account_transactions(
 ) -> None:
     # Будем обновлять не чаще чем раз в 30 минут
     last_update: datetime | None = account.transations_update_time
-    now = datetime.utcnow()
+    now = datetime.now().replace(tzinfo=timezone.utc)
+    
     if last_update and (now - last_update > timedelta(minutes=30)):
         return
     

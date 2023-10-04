@@ -3,7 +3,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.config import app
-
 from cashbacker.casbacker import Cashbacker, Categories
 
 TEST_USER = {
@@ -31,7 +30,9 @@ def get_account_number(get_client, get_client_credentials):
     headers = {'Authorization': f'Bearer {get_client_credentials}'}
     response = get_client.get(app.url_path_for('get_cards_list'), headers=headers)
     assert response.status_code == 200
-    account_number = response.json()[0].get('account_number')
+    account_list = response.json()
+    centr_invest_accounts = list(filter(lambda x: x['bank'] == 'Центр-инвест', account_list))
+    account_number = centr_invest_accounts[0].get('account_number')
     return account_number
 
 
