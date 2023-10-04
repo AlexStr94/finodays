@@ -10,7 +10,6 @@ from string import punctuation
 import spacy
 from langdetect import detect
 
-from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 import pickle

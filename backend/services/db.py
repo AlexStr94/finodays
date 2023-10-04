@@ -1,16 +1,12 @@
-from asyncpg.exceptions import UniqueViolationError
-from datetime import date, datetime, timedelta, timezone
-from dateutil import relativedelta
+from datetime import date, datetime
 from typing import Generic, List, Type, TypeVar
-from fastapi.encoders import jsonable_encoder
-import orjson
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError, MultipleResultsFound
-from sqlalchemy.orm import selectinload, subqueryload
 
-
+from dateutil import relativedelta
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.db import Base
 from exceptions import db as exceptions
@@ -26,7 +22,7 @@ class Repository:
 
     def get_or_create(self, *args, **kwargs):
         raise NotImplementedError
-    
+
     def filter_by(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -38,10 +34,10 @@ class Repository:
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError
-    
+
     def bulk_update(self, *args, **kwargs):
         raise NotImplementedError
-    
+
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -65,7 +61,7 @@ class RepositoryDB(
         await db.commit()
         await db.refresh(db_obj)
         return db_obj
-    
+
     async def bulk_create(
         self,
         db: AsyncSession,
@@ -78,22 +74,21 @@ class RepositoryDB(
             ]
             db.add_all(db_objs)
             await db.commit()
-            # await db.refresh(db_objs)
         except IntegrityError:
             await db.rollback()
-    
+
     async def all(self, db: AsyncSession) -> List[ModelType]:
         statement = select(self._model)
         results = await db.execute(statement=statement)
         lst = results.scalars().all()
         return lst
-    
+
     async def filter_by(self, db: AsyncSession, **kwargs) -> List[ModelType]:
         statement = select(self._model).filter_by(**kwargs)
         results = await db.execute(statement=statement)
         lst = results.scalars().all()
         return lst
-    
+
     async def get(self, db: AsyncSession, **kwargs) -> ModelType | None:
         results: List[ModelType] = await self.filter_by(db, **kwargs)
         if len(results) > 1:
@@ -101,14 +96,14 @@ class RepositoryDB(
         if results:
             return results[0]
         return None
-    
+
     async def get_or_create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
         obj: ModelType | None = await self.get(db, **obj_in.dict())
         if not obj:
             obj = await self.create(db, obj_in)
-        
+
         return obj
-    
+
     async def update(
         self,
         db: AsyncSession,
@@ -123,24 +118,25 @@ class RepositoryDB(
             for attribute, value in obj_in_data.items():
                 if attribute != 'id' and value != None:
                     setattr(db_obj, attribute, value)
-                
+
             await db.commit()
             await db.refresh(db_obj)
             return db_obj
-        raise exceptions.UserCashbackDoesNotExist #exception type add
-    
+        raise exceptions.ObjectDoesNotExist
+
 
 class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
     async def get(self, db: AsyncSession, gosuslugi_id: str) -> models.User:
-        statement = select(self._model).where(self._model.gosuslugi_id == gosuslugi_id)
+        statement = select(self._model).where(
+            self._model.gosuslugi_id == gosuslugi_id)
         results = await db.execute(statement=statement)
         return results.scalar_one_or_none()
-    
+
     async def get_or_create(self, db: AsyncSession, obj_in: schemas.User) -> models.User:
         user: models.User | None = await self.get(db, gosuslugi_id=obj_in.gosuslugi_id)
         if not user:
             user = await self.create(db, obj_in)
-        
+
         return user
 
 
@@ -156,11 +152,11 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
             .filter(
                 models.UserCashback.month == month,
                 models.UserCashback.status == True,
-            ) \
+        ) \
             .options(selectinload(self._model.cards)) \
             .options(selectinload(self._model.cashbacks)) \
             .options(selectinload(models.UserCashback.cashback))
-        
+
         results = await db.execute(statement=statement)
 
         accounts = set()
@@ -196,7 +192,6 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
             result.append(account_info)
 
         return result
-    
 
     async def get_user_accounts_with_transactions(
         self,
@@ -207,15 +202,14 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
         start_time = datetime(
             year=month.year,
             month=month.month,
-            day=1,
-            # tzinfo=timezone.utc
+            day=1
         )
         end_time = start_time + relativedelta.relativedelta(months=1)
         statement = select(self._model, models.Transaction) \
             .filter(self._model.user_id == user_id) \
             .filter(models.Transaction.time >= start_time) \
             .filter(models.Transaction.time < end_time)
-        
+
         results = await db.execute(statement=statement)
 
         accounts = set()
@@ -244,11 +238,14 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
 
         return result
 
-class RepositoryCard(RepositoryDB[models.Card, schemas.CardCreate, schemas.CardCreate]):  
+
+class RepositoryCard(RepositoryDB[models.Card, schemas.CardCreate, schemas.CardCreate]):
     pass
 
+
 class RepositoryCashback(
-    RepositoryDB[models.Cashback, schemas.CashbackCreate, schemas.CashbackCreate]
+    RepositoryDB[models.Cashback,
+                 schemas.CashbackCreate, schemas.CashbackCreate]
 ):
     async def bulk_get(
         self, db: AsyncSession, cashbacks: List[schemas.Cashback]
@@ -262,10 +259,12 @@ class RepositoryCashback(
 
         results = await db.execute(statement=statement)
         return results.scalars().all()
-    
+
+
 class RepositoryUserCashback(
-    RepositoryDB[models.UserCashback, schemas.UserCashbackCreate, schemas.UserCashbackUpdate]
-):  
+    RepositoryDB[models.UserCashback,
+                 schemas.UserCashbackCreate, schemas.UserCashbackUpdate]
+):
     async def filter_by(
         self,
         db: AsyncSession,
@@ -279,43 +278,25 @@ class RepositoryUserCashback(
         results = await db.execute(statement=statement)
         lst = results.scalars().all()
         return lst
-    
-    # async def update(
-    #     self,
-    #     db: AsyncSession,
-    #     obj_in: schemas.UserCashbackUpdate
-    # ) -> models.UserCashback:
-    #     db_obj: models.UserCashback = await self.get(
-    #         db,
-    #         id=obj_in.id
-    #     )
-    #     if db_obj:
-    #         db_obj.status = obj_in.status
-    #         await db.commit()
-    #         await db.refresh(db_obj)
-    #         return db_obj
-    #     raise exceptions.UserCashbackDoesNotExist
-    
 
-class RepositoryTransaction(RepositoryDB[models.Transaction, schemas.TransactionCreate, schemas.TransactionCreate]):
-    pass
-    # async def bulk_create(
-    #     self,
-    #     db: AsyncSession,
-    #     objs_in: List[schemas.TransactionCreate]
-    # ) -> List[models.Transaction]:
-    #     try:
-    #         prepared_objs = []
-    #         for obj in objs_in:
-    #             obj = obj.dict()
-    #             obj['time'] = obj['time'].replace(tzinfo=timezone.utc)
-    #             prepared_objs.append(obj)
 
-    #         db.add_all(prepared_objs)
-    #         await db.commit()
-    #         # await db.refresh(db_objs)
-    #     except:
-    #         await db.rollback()
+class RepositoryTransaction(
+    RepositoryDB[models.Transaction,
+                 schemas.TransactionCreate, schemas.TransactionCreate]
+):
+    async def get_user_transactions_from(
+        self,
+        db: AsyncSession,
+        account_id: int,
+        start_time: datetime
+    ) -> List[models.Transaction]:
+        statement = select(self._model) \
+            .filter(self._model.account_id == account_id) \
+            .filter(models.Transaction.time >= start_time)
+        results = await db.execute(statement=statement)
+        lst = results.scalars().all()
+        return lst
+
 
 user_crud = RepositoryUser(models.User)
 account_crud = RepositoryAccount(models.Account)
