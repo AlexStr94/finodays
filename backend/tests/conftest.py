@@ -53,3 +53,13 @@ def get_spoofing_image():
     with open('tests/files/portret.jpg', 'rb') as file:
         image_data = file.read()
     return image_data
+
+
+@pytest.fixture(scope='session')
+def get_client_cashback(get_client, get_client_credentials, get_account_number):
+    headers = {'Authorization': f'Bearer {get_client_credentials}'}
+    response = get_client.get(f'{app.url_path_for("get_cashback_for_choose")}?account_number={get_account_number}',
+                              headers=headers)
+    assert response.status_code == 202
+    assert response.json().get('can_choose_cashback')
+    return response.json().get('cashbacks')

@@ -8,7 +8,7 @@ def test_get_n_most_frequent_strings():
 def test_cashbacker_tokenize_text(get_cashbacker):
     products = ["Sample product in English.", "Пример товара на русском языке."]
     padded_sequences = get_cashbacker.tokenize_text(products)
-    assert padded_sequences.shape == (len(products), 21)
+    assert padded_sequences.shape == (len(products), 40)
 
 
 def test_cashbacker_preprocess_sentences(get_cashbacker):
