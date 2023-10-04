@@ -46,9 +46,9 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
 
 class Cashbacker:
     def __init__(self):
-        self.topic_model = load_model("cashbacker/new_model_LSTM.h5",
+        self.topic_model = load_model("cashbacker/LSTM_model.h5",
                                       custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
-        with open('cashbacker/new_tokenizer_LSTM.pkl', 'rb') as f:
+        with open('cashbacker/LSTM_tokenizer.pkl', 'rb') as f:
             self.tokenizer = pickle.load(f)
 
     def preprocess_sentences(self, sentences, max_length):
@@ -76,7 +76,7 @@ class Cashbacker:
                 cleaned_sentence = " ".join(lemmas)
                 all_sentence.append(cleaned_sentence)
 
-        padded_sequences = self.preprocess_sentences(all_sentence, 21)
+        padded_sequences = self.preprocess_sentences(all_sentence, 40)
 
         return padded_sequences
 
