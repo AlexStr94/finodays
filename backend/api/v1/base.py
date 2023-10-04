@@ -1,20 +1,27 @@
 from datetime import date, timedelta
-from dateutil import relativedelta
 from random import randint
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, status, HTTPException, UploadFile
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from services.validation import validate_photo
 
-from exceptions.auth import AuthError
-from services.auth import ACCESS_TOKEN_EXPIRE_DAYS, create_access_token, get_current_user, get_user_by_photo
-from services.db import account_crud, user_cashback_crud, cashback_crud, user_crud, transaction_crud
-from services.external_integrations import authenticate_user, create_or_update_accounts_in_db, get_account_cashbacks, get_accounts, update_user_transactions
-from services.cashback import can_choose_cashback, get_card_choose_cashback
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi.security import OAuth2PasswordRequestForm
+
 from db.db import get_session
-from schemas import base as schemas
+from exceptions import auth as auth_exceptions
+from exceptions import api as api_exceptions
 from models import base as models
+from schemas import base as schemas
+from services.auth import (ACCESS_TOKEN_EXPIRE_DAYS, create_access_token,
+                           get_current_user)
+from services.cashback import can_choose_cashback, get_card_choose_cashback
+from services.db import (account_crud, cashback_crud, user_cashback_crud,
+                         user_crud)
+from services.external_integrations import (authenticate_user,
+                                            create_or_update_accounts_in_db,
+                                            get_account_cashbacks,
+                                            get_accounts, get_user_by_photo,
+                                            update_user_transactions)
+from services.validation import validate_photo
 
 
 router = APIRouter()
@@ -29,25 +36,25 @@ async def terminal(
     file_in: UploadFile,
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
-    photo_validation = validate_photo(file_in)
+    photo: bytes = await file_in.read()
+    photo_validation = await validate_photo(photo)
     if not photo_validation:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-    # чуть позже переделаю
-    # user_info: schemas.User = get_user_by_photo(file_in)
-    user_info: schemas.User | None = await authenticate_user(
-        'username', 'password'
-    )
+        raise auth_exceptions.AntiSpoofingException()
+    
+    user_info: schemas.User = await get_user_by_photo(photo, file_in.filename)
+
     if user_info:
 
-        accounts: List[schemas.RawAccount] | None = get_accounts(user_info.gosuslugi_id)
-        
+        accounts: List[schemas.RawAccount] | None = await get_accounts(
+            user_info.gosuslugi_id)
+
         if accounts:
             cards = []
             today = date.today()
             month = date(year=today.year, month=today.month, day=1)
 
             for account in accounts:
-                account_cashbacks = get_account_cashbacks(
+                account_cashbacks = await get_account_cashbacks(
                     account_number=account.number,
                     month=month
                 )
@@ -71,9 +78,8 @@ async def terminal(
                 surname=user_info.surname,
                 cards=cards
             )
-        
-    raise HTTPException(404)
-   
+
+    raise auth_exceptions.EBSExceptin()
 
 
 @router.post('/auth', response_model=schemas.Token)
@@ -86,11 +92,11 @@ async def get_access_token(
     )
 
     if not user_info:
-        raise AuthError
-    
+        raise auth_exceptions.AuthError()
+
     user: models.User = await user_crud.get_or_create(db, user_info)
 
-    accounts: List[schemas.RawAccount] | None = get_accounts(user.gosuslugi_id)
+    accounts: List[schemas.RawAccount] | None = await get_accounts(user.gosuslugi_id)
 
     if accounts:
         today = date.today()
@@ -130,7 +136,7 @@ async def get_cards_list(
         user_id=current_user.id,
         month=month
     )
-    
+
     return result
 
 
@@ -162,12 +168,14 @@ async def get_cashback_for_choose(
             month=month,
             status=True
         )
+    else:
+        raise api_exceptions.AccountNotFoundException()
     if (
         account
         and account.user_id == current_user.id
         and can_choose_cashback(account)
         and not month_cashbacks
-    ):  
+    ):
         # если уже формировали кэшбеки, их и возвращаем, чтобы
         # не было дублей
         not_accepted_cashbacks = await user_cashback_crud.filter_by(
@@ -193,12 +201,15 @@ async def get_cashback_for_choose(
             )
 
         # Если еще не формировали кэшбеки, то формируем
-        raw_cashbacks = get_card_choose_cashback(account)
+        raw_cashbacks = await get_card_choose_cashback(
+            db=db, account=account, month=month
+        )
         cashbacks: List[schemas.Cashback] = []
         for cashback in raw_cashbacks:
             cashback_in_db: models.Cashback = await cashback_crud.get_or_create(
                 db=db,
-                obj_in=schemas.CashbackCreate.create_from_raw_cashback(cashback)
+                obj_in=schemas.CashbackCreate.create_from_raw_cashback(
+                    cashback)
             )
             # создавать кешбек конкретного пользователя
             user_cashback = await user_cashback_crud.get_or_create(
@@ -208,7 +219,7 @@ async def get_cashback_for_choose(
                     cashback_id=cashback_in_db.id,
                     month=month,
                     status=False,
-                    value=randint(3, 10) #может как-то умнее предлагать?
+                    value=randint(3, 10)  # может как-то умнее предлагать?
                 )
             )
             cashbacks.append(
@@ -217,15 +228,15 @@ async def get_cashback_for_choose(
                     value=user_cashback.value
                 )
             )
-        
+
         return schemas.CashbacksForChoose(
             account_number=account.number,
             bank=account.bank,
             cashbacks=cashbacks,
             can_choose_cashback=can_choose_cashback(account)
         )
-    
-    raise HTTPException # нормальный exception сделать
+
+    raise api_exceptions.CantChooseCashbackException()
 
 
 @router.post(
@@ -275,12 +286,11 @@ async def choose_card_cashback(
                 ) for user_cashback in user_cashbacks
             ]
         except:
-            raise HTTPException
-        
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+
         return month_cashback.cashback
 
-    raise HTTPException
-
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
 @router.get(
     '/transactions/',
