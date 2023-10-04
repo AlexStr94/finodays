@@ -1,5 +1,6 @@
 from typing import List
 from collections import Counter
+import random
 
 import pandas as pd
 import numpy as np
@@ -119,10 +120,23 @@ class Categories:
         return data_grouped
 
     def cashbaks_for_user(self, data):
-
-        categories = pd.DataFrame()
         topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование',
                   'одежда', 'продукты питания', 'уборка', 'электроника']
+
+        # return 5 random topics with random percents sum of which is 100%
+        if data.shape[0] < best_look_back:
+            random.shuffle(topics)
+            selected_topics = topics[:5]
+
+            percentages = [random.randint(1, 100) for _ in range(4)]
+            percentages.append(100 - sum(percentages))
+
+            result = pd.DataFrame(
+                [{'topics': topic, 'percent': percent} for topic, percent in zip(selected_topics, percentages)])
+
+            return result
+
+        categories = pd.DataFrame()
 
         df = self.get_dataframe(data)
 
