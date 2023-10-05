@@ -3,7 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.config import app
-from cashbacker.casbacker import Cashbacker, Сategorizer
+from cashbacker.casbacker import cashbacker, categorizer
 
 TEST_USER = {
     'username': 'alex',
@@ -38,14 +38,12 @@ def get_account_number(get_client, get_client_credentials):
 
 @pytest.fixture(scope='session')
 def get_cashbacker():
-    cashbacker = Cashbacker()
     return cashbacker
 
 
 @pytest.fixture(scope='session')
-def get_categories():
-    categories = Сategorizer()
-    return categories
+def get_categorizer():
+    return categorizer
 
 
 @pytest.fixture(scope='session')

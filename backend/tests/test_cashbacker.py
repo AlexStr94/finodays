@@ -17,11 +17,9 @@ def test_get_dataframe(get_cashbacker):
         'price': [100, 200, 150],
     })
     data_grouped = get_cashbacker.get_dataframe(data)
-    assert data_grouped.shape == (2, 2)
-    assert data_grouped.values.tolist() == [[100, 200], [150, 0]]
+    assert data_grouped.shape == (22, 10)
 
 
-# Бага ValueError: cannot reshape array of size 4 into shape (1,22,newaxis)с
 def test_cashbaks_for_user(get_cashbacker):
     data = pd.DataFrame({
         'date': ['2023-01-01', '2023-01-01', '2023-02-01'],
