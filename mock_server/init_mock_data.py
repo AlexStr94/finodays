@@ -2,7 +2,7 @@ import asyncio
 import csv
 import os
 from datetime import date, datetime, timedelta, timezone
-from random import choice, choices, randint, randrange
+from random import choice, choices, randint, randrange, sample
 from string import digits
 from typing import List
 
@@ -209,7 +209,7 @@ async def init_mock_data() -> None:
                 next_month = today  + relativedelta.relativedelta(months=1)
                 
                 for account in user_accounts_with_cashback:
-                    account_cashbacks: List[models.Cashback] = choices(cashbacks, k=3)
+                    account_cashbacks: List[models.Cashback] = sample(cashbacks, k=3)
                     for cashback in account_cashbacks:
                         await user_cashback_crud.create(
                             db=session,
