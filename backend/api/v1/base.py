@@ -54,10 +54,33 @@ async def terminal(
             month = date(year=today.year, month=today.month, day=1)
 
             for account in accounts:
-                account_cashbacks = await get_account_cashbacks(
-                    account_number=account.number,
-                    month=month
-                )
+                # Условие ниже нужно только для демонстрации на
+                # стенде. В боевом варианте должно отрабатывать только 
+                # выражение в else
+                if account.bank == 'Центр-инвест':
+                    account_cashbacks = schemas.RawAccountCashbacks(
+                        month=month,
+                        cashbacks=[
+                            schemas.RawCashback(
+                                product_type='продукты питания',
+                                value=5
+                            ),
+                            schemas.RawCashback(
+                                product_type='одежда',
+                                value=7
+                            ),
+                            schemas.RawCashback(
+                                product_type='электроника',
+                                value=3
+                            )
+                        ]
+
+                    )
+                else:
+                    account_cashbacks = await get_account_cashbacks(
+                        account_number=account.number,
+                        month=month
+                    )
                 cashbacks: List[schemas.RawAccountCashbacks]
                 if account_cashbacks:
                     cashbacks = account_cashbacks.cashbacks
@@ -259,11 +282,14 @@ async def choose_card_cashback(
         month = date(year=month.year, month=month.month, day=1)
 
         try:
+            # При получении сортируем по product_type, т.к. 
+            # ответ может приходить в другом порядке
             cashbacks: List[models.Cashback] = await cashback_crud.bulk_get(
                 db=db, cashbacks=month_cashback.cashback
             )
 
-            cashbacks_data = zip(month_cashback.cashback, cashbacks)
+            month_cashbacks = list(sorted(month_cashback.cashback, key=lambda x: x.product_type))
+            cashbacks_data = zip(month_cashbacks, cashbacks)
             # слабое место
             user_cashbacks = [
                 await user_cashback_crud.get(
@@ -292,6 +318,7 @@ async def choose_card_cashback(
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
+
 @router.get(
     '/transactions/',
     status_code=status.HTTP_200_OK,
@@ -313,3 +340,32 @@ async def get_transactions(
     return await account_crud.get_user_accounts_with_transactions(
         db=db, user_id=current_user.id, month=month
     )
+
+
+@router.get(
+    '/log_out/',
+    status_code=status.HTTP_200_OK
+)
+async def log_out(
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session),
+):
+    """
+        Для демонстрации на стенде, при выходе из приложения
+        удаляет выбранные кэшбеки для счетов Центр-инвеста
+    """
+    centr_invest_accounts: List[models.Account] = await account_crud.filter_by(
+        db=db, bank='Центр-инвест', user_id=current_user.id
+    )
+
+    for account in centr_invest_accounts:
+        user_cashbacks: List[models.UserCashback] = await user_cashback_crud.filter_by(
+            db=db, account_id=account.id
+        )
+        for user_cashback in user_cashbacks:
+            await user_cashback_crud.delete(
+                db=db, obj=user_cashback
+            )
+
+    return {'message': 'ok'}
+    

@@ -3,7 +3,7 @@ from typing import Generic, List, Type, TypeVar
 
 from dateutil import relativedelta
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -123,7 +123,12 @@ class RepositoryDB(
             await db.refresh(db_obj)
             return db_obj
         raise exceptions.ObjectDoesNotExist
-
+    
+    async def delete(self, db: AsyncSession, obj: ModelType):
+        statement = delete(self._model).where(self._model.id == obj.id)
+        await db.execute(statement)
+        await db.commit()
+        
 
 class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
     async def get(self, db: AsyncSession, gosuslugi_id: str) -> models.User:
@@ -255,7 +260,8 @@ class RepositoryCashback(
             for cashback in cashbacks
         ]
         statement = select(self._model) \
-            .filter(self._model.product_type.in_(product_types))
+            .filter(self._model.product_type.in_(product_types)) \
+            .order_by(self._model.product_type)
 
         results = await db.execute(statement=statement)
         return results.scalars().all()
