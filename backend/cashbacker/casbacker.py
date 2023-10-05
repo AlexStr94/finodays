@@ -108,7 +108,7 @@ class Cashbacker:
 
     def __init__(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        model_path = os.path.join(current_dir, 'LSTM_model.h5')
+        model_path = os.path.join(current_dir, 'spendings.h5')
         self.cashback_model = load_model(model_path)
 
     def add_time_features(self, df):
