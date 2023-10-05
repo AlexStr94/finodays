@@ -1,3 +1,4 @@
+import os
 from typing import List
 from collections import Counter
 import random
@@ -20,6 +21,7 @@ import tensorflow as tf
 
 from sklearn.preprocessing import StandardScaler
 
+
 nltk.download('stopwords')
 
 nlp_eng = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
@@ -39,16 +41,20 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
     string_counts = Counter(strings)
 
     most_common_strings = string_counts.most_common(n)
-    result = [string for string, count in most_common_strings]
+    result = [string for string, _ in most_common_strings]
 
     return result
 
 
-class Cashbacker:
+class Сategorizer:
     def __init__(self):
-        self.topic_model = load_model("cashbacker/LSTM_model.h5",
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        model_path = os.path.join(current_dir, 'LSTM_model.h5')
+        tokenizer_path = os.path.join(current_dir, 'LSTM_tokenizer.pkl')
+        
+        self.topic_model = load_model(model_path,
                                       custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
-        with open('cashbacker/LSTM_tokenizer.pkl', 'rb') as f:
+        with open(tokenizer_path, 'rb') as f:
             self.tokenizer = pickle.load(f)
 
     def preprocess_sentences(self, sentences, max_length):
@@ -80,7 +86,7 @@ class Cashbacker:
 
         return padded_sequences
 
-    def get_topics_name(self, product_names):
+    def get_topics_name(self, product_names: list) -> list:
         tokens = self.tokenize_text(product_names)
         model = self.topic_model
         tf.config.run_functions_eagerly(True)
@@ -98,10 +104,12 @@ class Cashbacker:
         return topics
 
 
-class Categories:
+class Cashbacker:
 
     def __init__(self):
-        self.cashback_model = load_model("cashbacker/spendings.h5")
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        model_path = os.path.join(current_dir, 'LSTM_model.h5')
+        self.cashback_model = load_model(model_path)
 
     def add_time_features(self, df):
         df['date'] = pd.to_datetime(df['date'])
@@ -119,7 +127,7 @@ class Categories:
         data_grouped = data_grouped.drop(columns=['year', 'month', 'season'])
         return data_grouped
 
-    def cashbaks_for_user(self, data):
+    def cashbaks_for_user(self, data: pd.DataFrame) -> pd.DataFrame:
         topics = ['автозапчасти', 'аквариум', 'видеоигры', 'закуски и приправы', 'напитки', 'образование',
                   'одежда', 'продукты питания', 'уборка', 'электроника']
 
@@ -169,3 +177,6 @@ class Categories:
         cashbacks = top[['topics', 'percent']]
 
         return cashbacks
+
+cashbacker = Cashbacker()
+categorizer = Сategorizer()

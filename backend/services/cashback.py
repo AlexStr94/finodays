@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 
-from cashbacker.casbacker import Cashbacker
+from cashbacker.casbacker import cashbacker
 from models import base as models
 from schemas import base as schemas
 
@@ -36,23 +36,18 @@ async def get_card_choose_cashback(
         .get_user_transactions_from(
             db=db, account_id=account.id, start_time=start_time
         )
-    df = pd.DataFrame([(d.time, d.value, d.category) for d in transactions], 
-                  columns=['time', 'value', 'category'])
+    df = pd.DataFrame([(d.time, 'клиент', d.category, d.value) for d in transactions], 
+                  columns=['date', 'client', 'topic', 'price'])
+    
+    cashbacks = cashbacker.cashbaks_for_user(
+        data=df
+    )
 
-    # временная заглушка
-    CASHBACK_CATEGORIES = [
-        'автозапчасти', 'видеоигры', 'напитки', 'продукты питания',
-        'закуски и приправы', 'аквариум', 'одежда', 'уборка',
-        'электроника', 'образование'
-    ]
     return [
         schemas.Cashback(
-            product_type=CASHBACK_CATEGORIES[i],
-            value=i+1
+            product_type=row['topics'],
+            value=row['percent']
         )
-        for i in range(6)
+        for _, row in cashbacks.iterrows()
     ]
-    if can_choose_cashback(account):
-        return Cashbacker(account).calculate_cashback_categories()
 
-    return None
