@@ -7,6 +7,7 @@ import aiohttp
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cashbacker.casbacker import categorizer, cashbacker
 from core.config import BASE_DIR
 from .db import (account_crud, card_crud, cashback_crud, transaction_crud,
                  user_cashback_crud)
@@ -180,7 +181,8 @@ async def update_account_transactions(
 ) -> None:
     # Будем обновлять не чаще чем раз в 30 минут
     last_update: datetime | None = account.transations_update_time
-    now = datetime.utcnow()
+    now = datetime.now().replace(tzinfo=timezone.utc)
+    
     if last_update and (now - last_update > timedelta(minutes=30)):
         return
     
@@ -206,8 +208,12 @@ async def update_account_transactions(
                 _dict = json.loads(await response.text())
                 raw_account_transactions = schemas.RawAccountTransactions(**_dict)
                 
-                # тут в нейронку будем закидывать
-                transactions_categories = ['напитки'] * len(raw_account_transactions.transactions)
+                transactions_categories = categorizer.get_topics_name(
+                    product_names=[
+                        transaction.name
+                        for transaction in raw_account_transactions.transactions
+                    ]
+                )
                 transactions_info = zip(raw_account_transactions.transactions, transactions_categories)
                 transactions = [
                     schemas.TransactionCreate(

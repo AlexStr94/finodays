@@ -37,7 +37,7 @@ async def terminal(
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
     photo: bytes = await file_in.read()
-    photo_validation = await validate_photo(photo)
+    photo_validation = validate_photo(photo)
     if not photo_validation:
         raise auth_exceptions.AntiSpoofingException()
     
