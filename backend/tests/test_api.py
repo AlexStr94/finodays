@@ -34,13 +34,12 @@ def test_get_cashback_for_choose(get_client, get_client_credentials, get_account
     assert 'cashbacks' in response.json().keys()
 
 
-# Здесь выпадает 400 ошибка
-# def test_choose_cashback(get_client, get_client_credentials, get_account_number, get_client_cashback):
-#     headers = {'Authorization': f'Bearer {get_client_credentials}'}
-#     json_data = {
-#         "account_number": get_account_number,
-#         "month": date.today().isoformat(),
-#         "cashback": get_client_cashback[:3]
-#     }
-#     response = get_client.post(app.url_path_for('choose_card_cashback'), json=json_data, headers=headers)
-#     assert response.status_code == 200
+def test_choose_cashback(get_client, get_client_credentials, get_account_number, get_client_cashback):
+    headers = {'Authorization': f'Bearer {get_client_credentials}'}
+    json_data = {
+        "account_number": get_account_number,
+        "month": date.today().isoformat(),
+        "cashback": get_client_cashback[:3]
+    }
+    response = get_client.post(app.url_path_for('choose_card_cashback'), json=json_data, headers=headers)
+    assert response.status_code == 200

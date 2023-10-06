@@ -1,7 +1,6 @@
 import os
 from typing import List
 from collections import Counter
-import random
 
 import pandas as pd
 import numpy as np
