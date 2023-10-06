@@ -46,7 +46,7 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
     return result
 
 
-class Сategorizer:
+class Categorizer:
     def __init__(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
         model_path = os.path.join(current_dir, 'LSTM_model.h5')
@@ -185,4 +185,4 @@ class Cashbacker:
         return cashbacks
 
 cashbacker = Cashbacker()
-categorizer = Сategorizer()
+categorizer = Categorizer()
