@@ -11,6 +11,19 @@ services:
       - ./docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
       - db:/var/lib/postgresql/data
 
+  mock_server:
+    container_name: mock_server
+    restart: always
+    build:
+      context: .
+      dockerfile: dockerization/mock_server/Dockerfile
+    env_file:
+      - mock_server/.env
+    ports:
+      - '8001:8000'
+    depends_on:
+      - db
+
   backend:
     container_name: backend
     restart: always
