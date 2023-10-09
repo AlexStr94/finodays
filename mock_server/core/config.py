@@ -14,7 +14,7 @@ class AppSettings(BaseSettings):
     app_title: str = 'Mock Server'
     database_dsn: PostgresDsn
     project_host: str = os.getenv('PROJECT_HOST', '127.0.0.1')
-    project_port: int = int(os.getenv('PROJECT_PORT', '8000'))
+    project_port: int = int(os.getenv('PROJECT_PORT', '8001'))
     api_v1_prefix: str = '/api/v1'
     secret_key: str = os.getenv(
         'SECRET_KEY',

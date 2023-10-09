@@ -19,8 +19,8 @@ services:
       dockerfile: dockerization/mock_server/Dockerfile
     env_file:
       - mock_server/.env
-    ports:
-      - '8001:8000'
+    expose:
+      - '8001'
     depends_on:
       - db
 

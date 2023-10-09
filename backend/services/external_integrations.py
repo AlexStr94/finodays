@@ -32,9 +32,9 @@ async def authenticate_user(
         'username': username,
         'password': password
     }
-
+    
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data, ssl=False) as response:
+        async with session.post(url, json=data) as response:
             if response.status == 200:
                 user_dict = json.loads(await response.text())
                 user_dict['gosuslugi_id'] = user_dict.get('id')
@@ -75,7 +75,7 @@ async def get_accounts(gosuslugi_id: str) -> List[schemas.RawAccount] | None:
     url = f'{url}?user_id={gosuslugi_id}'
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, ssl=False) as response:
+        async with session.get(url) as response:
             if response.status == 200:
                 accounts = json.loads(await response.text())
                 return [
@@ -98,7 +98,7 @@ async def get_account_cashbacks(
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data, ssl=False) as response:
+        async with session.post(url, json=data) as response:
             if response.status == 200:
                 cashbacks_dict = json.loads(await response.text())
                 return schemas.RawAccountCashbacks(**cashbacks_dict)
@@ -195,7 +195,7 @@ async def update_account_transactions(
         'start_datetime': last_transation_time
     }
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data, ssl=False) as response:
+        async with session.post(url, json=data) as response:
             if response.status == 200:
                 # обновляем время последнего обновления транзакций
                 account = await account_crud.update(

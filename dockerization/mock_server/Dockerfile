@@ -16,7 +16,7 @@ CMD ["/prestart.sh"]
 COPY ./dockerization/mock_server/start.sh /start.sh
 RUN chmod +x /prestart.sh
 
-EXPOSE 8000
+EXPOSE 8001
 
 ENTRYPOINT ["/start.sh"]
 
