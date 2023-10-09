@@ -9,7 +9,7 @@ services:
       - '5432'
     volumes: 
       - ./docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
-      - db:/var/lib/postgresql/data
+      # - db:/var/lib/postgresql/data
 
   mock_server:
     container_name: mock_server

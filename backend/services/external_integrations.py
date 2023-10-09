@@ -33,7 +33,9 @@ async def authenticate_user(
         'password': password
     }
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.post(url, json=data) as response:
             if response.status == 200:
                 user_dict = json.loads(await response.text())
@@ -54,7 +56,9 @@ async def get_user_by_photo(photo: bytes, photo_name: str)-> schemas.User:
     formdata = aiohttp.FormData()
     formdata.add_field('file_in', photo, filename=photo_name)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.post(url, data=formdata) as response:
             if response.status == 200:
                 user_dict = json.loads(await response.text())
@@ -74,7 +78,9 @@ async def get_accounts(gosuslugi_id: str) -> List[schemas.RawAccount] | None:
     url = os.getenv('GET_USER_ACOOUNTS_FROM_NSPK_LINK')
     url = f'{url}?user_id={gosuslugi_id}'
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.get(url) as response:
             if response.status == 200:
                 accounts = json.loads(await response.text())
@@ -97,7 +103,9 @@ async def get_account_cashbacks(
         'month': month.strftime('%Y-%m-%d')
     }
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.post(url, json=data) as response:
             if response.status == 200:
                 cashbacks_dict = json.loads(await response.text())
@@ -194,7 +202,9 @@ async def update_account_transactions(
         'account_number': account.number,
         'start_datetime': last_transation_time
     }
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.post(url, json=data) as response:
             if response.status == 200:
                 # обновляем время последнего обновления транзакций
