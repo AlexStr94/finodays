@@ -19,8 +19,6 @@ services:
       dockerfile: dockerization/mock_server/Dockerfile
     env_file:
       - mock_server/.env
-    expose:
-      - '8001'
     depends_on:
       - db
 
