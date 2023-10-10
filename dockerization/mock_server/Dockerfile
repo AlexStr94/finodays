@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY ./mock_server /app
 
-COPY ./dockerization/prestart.sh /prestart.sh
+COPY ./dockerization/mock_server/prestart.sh /prestart.sh
 RUN chmod +x /prestart.sh
 
 CMD ["/prestart.sh"]
@@ -16,7 +16,7 @@ CMD ["/prestart.sh"]
 COPY ./dockerization/mock_server/start.sh /start.sh
 RUN chmod +x /prestart.sh
 
-EXPOSE 8001
+EXPOSE 8000
 
 ENTRYPOINT ["/start.sh"]
 
