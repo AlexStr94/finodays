@@ -81,7 +81,7 @@ class Categorizer:
                 cleaned_sentence = " ".join(lemmas)
                 all_sentence.append(cleaned_sentence)
 
-        padded_sequences = self.preprocess_sentences(all_sentence, 40)
+        padded_sequences = self.preprocess_sentences(all_sentence, 29)
 
         return padded_sequences
 
