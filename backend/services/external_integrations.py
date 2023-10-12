@@ -207,6 +207,9 @@ async def update_account_transactions(
                     )
                 )
                 _dict = json.loads(await response.text())
+                # Если нет новых транзакций, то прекращаем работу функции
+                if _dict.get('transactions') == []:
+                    return
                 raw_account_transactions = schemas.RawAccountTransactions(**_dict)
                 
                 transactions_categories = await asyncio.to_thread(
