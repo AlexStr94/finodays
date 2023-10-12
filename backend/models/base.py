@@ -1,5 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.types import TIMESTAMP
 
 from db.db import Base
@@ -18,7 +19,7 @@ class User(Base):
 class Account(Base):
     __tablename__ = 'accounts'
     id = Column(Integer, primary_key=True)
-    number = Column(String(100), nullable=False)
+    number = Column(String(100), nullable=False, unique=True)
     bank = Column(String(100), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship('User', back_populates='accounts')
@@ -56,6 +57,11 @@ class UserCashback(Base):
     month = Column(Date, nullable=False)
     value = Column(Integer)
     status = Column(Boolean, nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            'account_id', 'cashback_id', 'month'
+        ),
+    )
 
 
 class Transaction(Base):
