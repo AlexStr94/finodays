@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from datetime import date, datetime, timedelta, timezone
@@ -208,7 +209,8 @@ async def update_account_transactions(
                 _dict = json.loads(await response.text())
                 raw_account_transactions = schemas.RawAccountTransactions(**_dict)
                 
-                transactions_categories = categorizer.get_topics_name(
+                transactions_categories = await asyncio.to_thread(
+                    categorizer.get_topics_name,
                     product_names=[
                         transaction.name
                         for transaction in raw_account_transactions.transactions
