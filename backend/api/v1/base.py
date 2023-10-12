@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, timedelta
 from random import randint
 from typing import Annotated, List
@@ -37,7 +38,7 @@ async def terminal(
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
     photo: bytes = await file_in.read()
-    photo_validation = validate_photo(photo)
+    photo_validation = await asyncio.to_thread(validate_photo, image=photo)
     if not photo_validation:
         raise auth_exceptions.AntiSpoofingException()
     
@@ -258,8 +259,8 @@ async def get_cashback_for_choose(
             cashbacks=cashbacks,
             can_choose_cashback=can_choose_cashback(account)
         )
-
-    raise api_exceptions.CantChooseCashbackException()
+    else:
+        raise api_exceptions.CashbackAlreadyChoosenException()
 
 
 @router.post(
