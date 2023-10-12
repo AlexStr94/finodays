@@ -148,7 +148,7 @@ class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
                 user = await self.create(db, obj_in)
             except IntegrityError:
                 db.rollback()
-                user = await self.get(db, **obj_in.dict())
+                user = await self.get(db, gosuslugi_id=obj_in.gosuslugi_id)
 
         return user
 
