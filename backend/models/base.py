@@ -42,7 +42,7 @@ class Card(Base):
 class Cashback(Base):
     __tablename__ = 'cashbacks'
     id = Column(Integer, primary_key=True)
-    product_type = Column(String(100), nullable=False)
+    product_type = Column(String(100), nullable=False, unique=True)
     accounts = relationship('UserCashback', back_populates='cashback')
 
 
