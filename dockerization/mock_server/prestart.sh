@@ -8,7 +8,7 @@ done
 
 echo "PostgreSQL started"
 
-while ! psql -lqt | cut -d \| -f 1 | grep -qw mock;
+while psql -lqt | cut -d \| -f 0 | grep 1 -qw mock; do
     sleep 0.1
 done
 
