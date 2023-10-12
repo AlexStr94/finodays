@@ -2,4 +2,4 @@
 
 alembic upgrade head
 python init_mock_data.py
-gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout-keep-alive 20
+gunicorn main:app --keep-alive 30 --timeout 60 --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
