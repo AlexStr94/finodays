@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, datetime
 from typing import List
 
@@ -39,8 +40,8 @@ async def get_card_choose_cashback(
     df = pd.DataFrame([(d.time, 'клиент', d.category, d.value) for d in transactions], 
                   columns=['date', 'client', 'topic', 'price'])
     
-    cashbacks = cashbacker.cashbaks_for_user(
-        data=df
+    cashbacks = await asyncio.to_thread(
+        cashbacker.cashbaks_for_user, data=df
     )
 
     return [

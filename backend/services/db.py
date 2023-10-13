@@ -100,7 +100,11 @@ class RepositoryDB(
     async def get_or_create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
         obj: ModelType | None = await self.get(db, **obj_in.dict())
         if not obj:
-            obj = await self.create(db, obj_in)
+            try:
+                obj = await self.create(db, obj_in)
+            except IntegrityError:
+                db.rollback()
+                obj = await self.get(db, **obj_in.dict())
 
         return obj
 
@@ -140,7 +144,11 @@ class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
     async def get_or_create(self, db: AsyncSession, obj_in: schemas.User) -> models.User:
         user: models.User | None = await self.get(db, gosuslugi_id=obj_in.gosuslugi_id)
         if not user:
-            user = await self.create(db, obj_in)
+            try:
+                user = await self.create(db, obj_in)
+            except IntegrityError:
+                db.rollback()
+                user = await self.get(db, gosuslugi_id=obj_in.gosuslugi_id)
 
         return user
 

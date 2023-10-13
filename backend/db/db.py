@@ -6,7 +6,8 @@ from core.config import app_settings
 
 Base = declarative_base()
 engine = create_async_engine(
-    app_settings.database_dsn, echo=app_settings.echo, future=True
+    app_settings.database_dsn, echo=app_settings.echo, future=True,
+    pool_pre_ping=True, pool_size=30, max_overflow=120
 )
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
