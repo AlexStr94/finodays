@@ -48,8 +48,8 @@ def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
 class Categorizer:
     def __init__(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        model_path = os.path.join(current_dir, 'model_LSTM.h5')
-        tokenizer_path = os.path.join(current_dir, 'tokenizer_ LSTM.pkl')
+        model_path = os.path.join(current_dir, 'LSTM_model.h5')
+        tokenizer_path = os.path.join(current_dir, 'LSTM_tokenizer.pkl')
         
         self.topic_model = load_model(model_path,
                                       custom_objects={'Addons>F1Score': tfa.metrics.F1Score})
