@@ -43,11 +43,12 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80" 
+      - "80:80"
+    volumes:
+      - ./terminal:/usr/share/nginx/html/
 
 volumes:
   db:
     driver: local
-  users_files:
 
 
