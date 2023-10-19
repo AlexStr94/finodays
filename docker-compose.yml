@@ -49,6 +49,7 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
       - ./terminal:/usr/share/nginx/html/terminal
+      - ./static:/usr/share/nginx/html/static
   
   certbot:
     image: certbot/certbot:latest
