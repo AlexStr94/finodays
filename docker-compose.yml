@@ -48,7 +48,7 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-      - ./terminal:/usr/share/nginx/html/
+      - ./terminal:/usr/share/nginx/html/terminal
   
   certbot:
     image: certbot/certbot:latest
