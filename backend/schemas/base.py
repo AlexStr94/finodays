@@ -160,3 +160,11 @@ class TerminalResponse(BaseModel):
     surname: str
     # middlename: str
     cards: List[CardWithCashback]
+
+
+class TransactionName(BaseModel):
+    name: str
+
+
+class CategoryName(BaseModel):
+    name: str

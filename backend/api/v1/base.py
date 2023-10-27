@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from cashbacker.casbacker import categorizer
 from db.db import get_session
 from exceptions import auth as auth_exceptions
 from exceptions import api as api_exceptions
@@ -340,6 +341,18 @@ async def get_transactions(
 
     return await account_crud.get_user_accounts_with_transactions(
         db=db, user_id=current_user.id, month=month
+    )
+
+
+@router.post(
+    '/get_category/',
+    description='Определение категории кэшбека для транзакции',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.CategoryName
+)
+async def get_category(transaction: schemas.TransactionName):
+    return schemas.CategoryName(
+        name=categorizer.get_topics_name([transaction.name])[0]
     )
 
 
