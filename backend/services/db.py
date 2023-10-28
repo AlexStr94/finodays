@@ -186,7 +186,7 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
             account_info = schemas.AccountWithCardsAndCashbacks(
                 account_number=account.number,
                 bank=account.bank,
-                can_choose_cashback=can_choose_cashback(account),
+                can_choose_cashback=can_choose_cashback(account.bank),
                 cashbacks=[
                     schemas.Cashback(
                         product_type=cashback.cashback.product_type,

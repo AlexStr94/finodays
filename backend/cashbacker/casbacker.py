@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import List
 from collections import Counter
@@ -61,7 +62,7 @@ class Categorizer:
         padded_sequences = pad_sequences(sequences, maxlen=max_length, padding='post', truncating='post')
         return padded_sequences
 
-    def tokenize_text(self, products):
+    async def tokenize_text(self, products):
 
         all_sentence = []
 
@@ -80,13 +81,14 @@ class Categorizer:
                           and token.text not in punctuation and token.text.lower() not in stop_words]
                 cleaned_sentence = " ".join(lemmas)
                 all_sentence.append(cleaned_sentence)
+            await asyncio.sleep(0)
 
         padded_sequences = self.preprocess_sentences(all_sentence, 29)
 
         return padded_sequences
 
-    def get_topics_name(self, product_names: list) -> list:
-        tokens = self.tokenize_text(product_names)
+    async def get_topics_name(self, product_names: list) -> list:
+        tokens = await self.tokenize_text(product_names)
         model = self.topic_model
         predictions = np.argmax(model(tokens), axis=1)
         dictionary = {

@@ -1,6 +1,4 @@
-import asyncio
 from datetime import date, timedelta
-from random import randint
 from typing import Annotated, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -121,17 +119,19 @@ async def get_access_token(
 
     user: models.User = await user_crud.get_or_create(db, user_info)
 
-    accounts: List[schemas.RawAccount] | None = await get_accounts(user.gosuslugi_id)
+    user_id: int = user.id
+
+    accounts: List[schemas.RawAccount] | None = await get_accounts(user_info.gosuslugi_id)
 
     if accounts:
         today = date.today()
         month = date(year=today.year, month=today.month, day=1)
 
-        await create_or_update_accounts_in_db(db, accounts, user, month)
+        await create_or_update_accounts_in_db(db, accounts, user_id, month)
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     access_token = create_access_token(
-        data={"sub": user.gosuslugi_id}, expires_delta=access_token_expires
+        data={"sub": user_info.gosuslugi_id}, expires_delta=access_token_expires
     )
     return schemas.Token(
         access_token=access_token,
@@ -186,10 +186,13 @@ async def get_cashback_for_choose(
     today = date.today()
     month = date(year=today.year, month=today.month, day=1)
     if account:
+        account_id: int = account.id
+        account_bank = account.bank
+        account_user_id = account.user_id
         # проверяем, есть ли кэшбеки на месяц для этого пользователя
         month_cashbacks = await user_cashback_crud.filter_by(
             db=db,
-            account_id=account.id,
+            account_id=account_id,
             month=month,
             status=True
         )
@@ -197,8 +200,8 @@ async def get_cashback_for_choose(
         raise api_exceptions.AccountNotFoundException()
     if (
         account
-        and account.user_id == current_user.id
-        and can_choose_cashback(account)
+        and account_user_id == current_user.id
+        and can_choose_cashback(account_bank)
         and not month_cashbacks
     ):
         # если уже формировали кэшбеки, их и возвращаем, чтобы
@@ -206,15 +209,15 @@ async def get_cashback_for_choose(
         not_accepted_cashbacks = await user_cashback_crud.filter_by(
             db=db,
             with_cashbacks=True,
-            account_id=account.id,
+            account_id=account_id,
             month=month,
             status=False
         )
 
         if not_accepted_cashbacks:
             return schemas.CashbacksForChoose(
-                account_number=account.number,
-                bank=account.bank,
+                account_number=account_number,
+                bank=account_bank,
                 cashbacks=[
                     schemas.Cashback(
                         product_type=user_cashback.cashback.product_type,
@@ -222,7 +225,7 @@ async def get_cashback_for_choose(
                     )
                     for user_cashback in not_accepted_cashbacks
                 ],
-                can_choose_cashback=can_choose_cashback(account)
+                can_choose_cashback=can_choose_cashback(account_bank)
             )
 
         # Если еще не формировали кэшбеки, то формируем
@@ -236,29 +239,32 @@ async def get_cashback_for_choose(
                 obj_in=schemas.CashbackCreate.create_from_raw_cashback(
                     cashback)
             )
+            cashback_in_db_id = cashback_in_db.id
+            cashback_in_db_product_type = cashback_in_db.product_type
+
             # создавать кешбек конкретного пользователя
-            user_cashback = await user_cashback_crud.get_or_create(
+            await user_cashback_crud.get_or_create(
                 db=db,
                 obj_in=schemas.UserCashbackCreate(
-                    account_id=account.id,
-                    cashback_id=cashback_in_db.id,
+                    account_id=account_id,
+                    cashback_id=cashback_in_db_id,
                     month=month,
                     status=False,
-                    value=randint(3, 10)  # может как-то умнее предлагать?
+                    value=cashback.value
                 )
             )
             cashbacks.append(
                 schemas.Cashback(
-                    product_type=cashback_in_db.product_type,
-                    value=user_cashback.value
+                    product_type=cashback_in_db_product_type,
+                    value=cashback.value
                 )
             )
 
         return schemas.CashbacksForChoose(
-            account_number=account.number,
-            bank=account.bank,
+            account_number=account_number,
+            bank=account_bank,
             cashbacks=cashbacks,
-            can_choose_cashback=can_choose_cashback(account)
+            can_choose_cashback=can_choose_cashback(account_bank)
         )
     else:
         raise api_exceptions.CashbackAlreadyChoosenException()
@@ -351,8 +357,9 @@ async def get_transactions(
     response_model=schemas.CategoryName
 )
 async def get_category(transaction: schemas.TransactionName):
+    category_lst = await categorizer.get_topics_name([transaction.name])
     return schemas.CategoryName(
-        name=categorizer.get_topics_name([transaction.name])[0]
+        name=category_lst[0]
     )
 
 
