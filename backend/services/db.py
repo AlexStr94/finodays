@@ -103,7 +103,7 @@ class RepositoryDB(
             try:
                 obj = await self.create(db, obj_in)
             except IntegrityError:
-                db.rollback()
+                await db.rollback()
                 obj = await self.get(db, **obj_in.dict())
 
         return obj
@@ -147,7 +147,7 @@ class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
             try:
                 user = await self.create(db, obj_in)
             except IntegrityError:
-                db.rollback()
+                await db.rollback()
                 user = await self.get(db, gosuslugi_id=obj_in.gosuslugi_id)
 
         return user
@@ -186,7 +186,7 @@ class RepositoryAccount(RepositoryDB[models.Account, schemas.AccountCreate, sche
             account_info = schemas.AccountWithCardsAndCashbacks(
                 account_number=account.number,
                 bank=account.bank,
-                can_choose_cashback=can_choose_cashback(account),
+                can_choose_cashback=can_choose_cashback(account.bank),
                 cashbacks=[
                     schemas.Cashback(
                         product_type=cashback.cashback.product_type,

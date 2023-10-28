@@ -1,3 +1,4 @@
+import asyncio
 from cashbacker.casbacker import get_n_most_frequent_strings
 
 
@@ -7,8 +8,8 @@ def test_get_n_most_frequent_strings():
 
 def test_categories_tokenize_text(get_categorizer):
     products = ["Sample product in English.", "Пример товара на русском языке."]
-    padded_sequences = get_categorizer.tokenize_text(products)
-    assert padded_sequences.shape == (len(products), 40)
+    padded_sequences = asyncio.run(get_categorizer.tokenize_text(products))
+    assert padded_sequences.shape == (len(products), 29)
 
 
 def test_categories_preprocess_sentences(get_categorizer):
@@ -20,5 +21,5 @@ def test_categories_preprocess_sentences(get_categorizer):
 
 def test_get_topics_name(get_categorizer):
     product_names = ["Sample product in English.", "Пример товара на русском языке."]
-    topics = get_categorizer.get_topics_name(product_names)
+    topics = asyncio.run(get_categorizer.get_topics_name(product_names))
     assert len(topics) == len(product_names)

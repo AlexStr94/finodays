@@ -121,11 +121,12 @@ async def create_or_update_account_in_db(
             user_id=user_id
         )
     )
+    account_id: int = account_in_db.id
     for card in account.cards:
         await card_crud.get_or_create(
             db=db,
             obj_in=schemas.CardCreate.create_from_raw_card(
-                raw_card=card, account_id=account_in_db.id
+                raw_card=card, account_id=account_id
             )
         )
     
@@ -133,7 +134,7 @@ async def create_or_update_account_in_db(
     account_cashbacks_info: schemas.RawAccountCashbacks | None = None
 
     account_cashbacks_info = await get_account_cashbacks(
-        account_number=account_in_db.number,
+        account_number=account.number,
         month=month
     )
 
@@ -141,19 +142,20 @@ async def create_or_update_account_in_db(
         return
     
     if account_cashbacks := account_cashbacks_info.cashbacks:
-        account_cashbacks_in_db: List[models.Cashback] = [
-            await cashback_crud.get_or_create(
+        account_cashbacks_ids: List[int] = []
+        for cashback in account_cashbacks: 
+            cashback = await cashback_crud.get_or_create(
                 db,
                 schemas.CashbackCreate.create_from_raw_cashback(cashback)
             )
-            for cashback in account_cashbacks
-        ]
-        raw_user_cashbacks = zip(account_cashbacks, account_cashbacks_in_db)
+            account_cashbacks_ids.append(cashback.id)
+            
+        raw_user_cashbacks = zip(account_cashbacks, account_cashbacks_ids)
         user_cashbacks_in_db: List[models.UserCashback] = [
             await user_cashback_crud.get_or_create(
                 db, schemas.UserCashbackCreate(
-                    account_id=account_in_db.id,
-                    cashback_id=raw_user_cashback[1].id,
+                    account_id=account_id,
+                    cashback_id=raw_user_cashback[1],
                     month=month,
                     value=raw_user_cashback[0].value,
                     status=True
@@ -165,14 +167,14 @@ async def create_or_update_account_in_db(
 async def create_or_update_accounts_in_db(
     db: AsyncSession,
     accounts: List[schemas.RawAccount],
-    user: models.User,
+    user_id: int,
     month: date
 ):
     for account in accounts:
         await create_or_update_account_in_db(
             db=db,
             account=account,
-            user_id=user.id,
+            user_id=user_id,
             month=month
         )
 
@@ -181,18 +183,22 @@ async def update_account_transactions(
     db: AsyncSession, account: models.Account
 ) -> None:
     # Будем обновлять не чаще чем раз в 30 минут
+    await db.refresh(account)
     last_update: datetime | None = account.transations_update_time
     now = datetime.now().replace(tzinfo=timezone.utc)
     
     if last_update and (now - last_update > timedelta(minutes=30)):
         return
     
+    account_id = account.id
+    account_number = account.number
+    
     last_transation_time = account.last_transation_time
     if last_transation_time:
         last_transation_time = last_transation_time.isoformat()
     url = os.getenv('GET_ACCOUNT_TRANSACTIONS_LINK')
     data = {
-        'account_number': account.number,
+        'account_number': account_number,
         'start_datetime': last_transation_time
     }
     async with aiohttp.ClientSession() as session:
@@ -202,7 +208,7 @@ async def update_account_transactions(
                 account = await account_crud.update(
                     db=db,
                     obj_in=schemas.AccountUpdate(
-                        id=account.id,
+                        id=account_id,
                         transations_update_time=datetime.utcnow()
                     )
                 )
@@ -212,8 +218,7 @@ async def update_account_transactions(
                     return
                 raw_account_transactions = schemas.RawAccountTransactions(**_dict)
                 
-                transactions_categories = await asyncio.to_thread(
-                    categorizer.get_topics_name,
+                transactions_categories = await categorizer.get_topics_name(
                     product_names=[
                         transaction.name
                         for transaction in raw_account_transactions.transactions
@@ -226,7 +231,7 @@ async def update_account_transactions(
                         bank_id=transaction[0].id,
                         name=transaction[0].name,
                         value=transaction[0].value,
-                        account_id=account.id,
+                        account_id=account_id,
                         category=transaction[1]
                     )
                     for transaction in transactions_info
@@ -241,7 +246,7 @@ async def update_account_transactions(
                     account = await account_crud.update(
                         db=db,
                         obj_in=schemas.AccountUpdate(
-                            id=account.id,
+                            id=account_id,
                             last_transation_time=last_transation_time
                         )
                     )

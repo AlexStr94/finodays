@@ -11,8 +11,8 @@ from models import base as models
 from schemas import base as schemas
 
 
-def can_choose_cashback(account: models.Account) -> bool:
-    if account.bank == 'Центр-инвест':
+def can_choose_cashback(bank: str) -> bool:
+    if bank == 'Центр-инвест':
         return True
 
     return False

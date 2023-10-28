@@ -1,5 +1,5 @@
 import os
-from fastapi import UploadFile
+
 import tensorflow as tf
 from keras import layers
 from keras.applications import MobileNetV2

@@ -8,6 +8,7 @@ from db.db import Base
 
 class User(Base):
     __tablename__ = 'users'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     first_name = Column(String(100), nullable=False)
     surname = Column(String(100), nullable=False)
@@ -18,6 +19,7 @@ class User(Base):
 
 class Account(Base):
     __tablename__ = 'accounts'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     number = Column(String(100), nullable=False, unique=True)
     bank = Column(String(100), nullable=False)
@@ -32,6 +34,7 @@ class Account(Base):
 
 class Card(Base):
     __tablename__ = 'cards'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     card_number = Column(String(20), unique=True)
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
@@ -42,6 +45,7 @@ class Card(Base):
 
 class Cashback(Base):
     __tablename__ = 'cashbacks'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     product_type = Column(String(100), nullable=False, unique=True)
     accounts = relationship('UserCashback', back_populates='cashback')
@@ -49,6 +53,7 @@ class Cashback(Base):
 
 class UserCashback(Base):
     __tablename__ = 'usercashbacks'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
     account = relationship('Account', back_populates='cashbacks', cascade='delete, merge, save-update')
@@ -66,6 +71,7 @@ class UserCashback(Base):
 
 class Transaction(Base):
     __tablename__ = 'transactions'
+    __mapper_args__ = {"eager_defaults": True}
     id = Column(Integer, primary_key=True)
     bank_id = Column(Integer, unique=True) # id транзакции в банке, доп. защита от дублей
     name = Column(String(300), nullable=False)
