@@ -88,8 +88,7 @@ class Categorizer:
     def get_topics_name(self, product_names: list) -> list:
         tokens = self.tokenize_text(product_names)
         model = self.topic_model
-        tf.config.run_functions_eagerly(True)
-        predictions = np.argmax(model.predict(tokens), axis=1)
+        predictions = np.argmax(model(tokens), axis=1)
         dictionary = {
             "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум',
                       'одежда', 'уборка', 'электроника', 'образование'],
@@ -159,7 +158,7 @@ class Cashbacker:
         x_test = final_scaled_train[-best_look_back:].reshape(1, best_look_back, -1)
 
         model = self.cashback_model
-        predictions = model.predict(x_test)
+        predictions = model(x_test)
         predictions_original = scaler.inverse_transform(predictions)
 
         for index in range(len(topics)):
