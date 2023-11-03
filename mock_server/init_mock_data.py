@@ -246,10 +246,10 @@ async def init_mock_data() -> None:
                     time = datetime(
                         year=2023,
                         month=11,
-                        day=choice([i for i in range(1,9)]),
-                        hour=randint(1, 24),
-                        minute=randint(1, 60),
-                        second=randint(1, 60)
+                        day=randint(1, 8),
+                        hour=randint(1, 23),
+                        minute=randint(1, 59),
+                        second=randint(1, 59)
                     )
                 else:
                     time = generate_random_datetime(
