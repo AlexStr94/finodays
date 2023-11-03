@@ -8,9 +8,7 @@ done
 
 echo "PostgreSQL started"
 
-while ! psql -lqt | cut -d \| -f 1 | grep -qw mock; do
-    sleep 0.1
-done
+sleep 5
 
 echo "mock database exists"
 
