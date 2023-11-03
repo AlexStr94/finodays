@@ -242,7 +242,7 @@ async def init_mock_data() -> None:
             )
             for index, row in enumerate(rows):
                 account = choice(accounts)
-                if index % 10 == 0:
+                if index % 25 == 0:
                     time = datetime(
                         year=2023,
                         month=11,
