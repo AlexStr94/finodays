@@ -20,7 +20,7 @@ class AppSettings(BaseSettings):
         'SECRET_KEY',
         'a8e65ae1f66694950808f5318419a729c8576d2275f823edde47f7cc36a26d51'
     )
-    echo: bool = True #(os.getenv('ECHO', 'True') == 'True')
+    echo: bool = os.getenv('ECHO', 'False') == 'True'
     
 
     class Config:
