@@ -240,16 +240,27 @@ async def init_mock_data() -> None:
                 month=today.month,
                 day=1
             )
-            for row in rows:
+            for index, row in enumerate(rows):
                 account = choice(accounts)
+                if index % 10 == 0:
+                    time = datetime(
+                        year=2023,
+                        month=11,
+                        day=choice([i for i in range(1,9)]),
+                        hour=randint(1, 24),
+                        minute=randint(1, 60),
+                        second=randint(1, 60)
+                    )
+                else:
+                    time = generate_random_datetime(
+                        start_transaction_datetime,
+                        365 + today.day
+                    )
                 await transaction_crud.create(
                     db=session,
                     obj_in=schemas.TransactionCreate(
                         name=row[0],
-                        time=generate_random_datetime(
-                            start_transaction_datetime,
-                            365 + today.day
-                        ),
+                        time=time,
                         value=int(row[1]),
                         account_id=account.id
                     )
