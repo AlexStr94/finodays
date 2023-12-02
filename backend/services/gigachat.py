@@ -115,3 +115,5 @@ class FinancialAnalyst:
         res = chat(messages)
 
         return res.content
+    
+financial_analyst = FinancialAnalyst()
