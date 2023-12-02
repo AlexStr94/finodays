@@ -367,11 +367,11 @@ async def get_category(transaction: schemas.TransactionName):
 
 
 @router.get(
-    '/gigi_chat/',
+    '/giga_chat/',
     status_code=status.HTTP_200_OK,
     response_model=schemas.GigaChatAnswer
 )
-async def gigi_chat(
+async def giga_chat(
     promt: int,
     current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
     db: AsyncSession = Depends(get_session),
