@@ -168,3 +168,20 @@ class TransactionName(BaseModel):
 
 class CategoryName(BaseModel):
     name: str
+
+
+class SetLimit(BaseModel):
+    category: str
+    value: int
+
+
+class CreateLimit(SetLimit):
+    user_id: int
+
+
+class Limit(CreateLimit):
+    id: int
+    
+
+class GigaChatAnswer(BaseModel):
+    answer: str

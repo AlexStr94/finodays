@@ -364,6 +364,53 @@ async def get_category(transaction: schemas.TransactionName):
 
 
 @router.get(
+    '/gigi_chat/',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.GigaChatAnswer
+)
+async def gigi_chat(
+    promt: int,
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session),
+):
+    answer: str = ''
+    return schemas.GigaChatAnswer(
+        answer=answer
+    )
+    
+
+@router.post(
+    '/set_limit/',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.Limit
+)
+async def set_limit(
+    limit: schemas.SetLimit,
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session)
+):
+    return schemas.Limit(
+        category=limit.category,
+        value=limit.value,
+        user_id=current_user.id,
+        id=3
+    )
+
+
+@router.get(
+    '/limits/',
+    status_code=status.HTTP_200_OK,
+    response_model=List[schemas.SetLimit]
+)
+async def limits(
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session)
+):
+    return List[schemas.SetLimit]
+    
+
+
+@router.get(
     '/log_out/',
     status_code=status.HTTP_200_OK
 )
