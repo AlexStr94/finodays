@@ -91,3 +91,8 @@ class CategotyLimit(Base):
     user = relationship('User', back_populates='limits')
     category = Column(String(100), nullable=False)
     value = Column(Integer, nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            'user_id', 'category'
+        ),
+    )

@@ -1,8 +1,8 @@
-"""06_add_limits
+"""07_add_category_limits
 
-Revision ID: d8caff8a2f48
+Revision ID: 96401c1d8e4e
 Revises: ceaf687eeb55
-Create Date: 2023-12-02 14:03:35.765961
+Create Date: 2023-12-02 15:27:41.475687
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'd8caff8a2f48'
+revision = '96401c1d8e4e'
 down_revision = 'ceaf687eeb55'
 branch_labels = None
 depends_on = None
@@ -22,8 +22,10 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('category', sa.String(length=100), nullable=False),
+    sa.Column('value', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'category')
     )
     # ### end Alembic commands ###
 

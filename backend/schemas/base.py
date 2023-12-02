@@ -170,17 +170,39 @@ class CategoryName(BaseModel):
     name: str
 
 
-class SetLimit(BaseModel):
+class RawLimit(BaseModel):
     category: str
     value: int
 
 
-class CreateLimit(SetLimit):
+class CreateLimit(RawLimit):
     user_id: int
+
+    @classmethod
+    def create_from_raw_limit(cls, raw_limit: RawLimit, user_id: int):
+        return cls(
+            category=raw_limit.category,
+            value=raw_limit.value,
+            user_id=user_id
+        )
 
 
 class Limit(CreateLimit):
     id: int
+
+    class Config:
+        orm_mode = True
+
+
+class UpdateLimit(Limit):
+    @classmethod
+    def create_from_create_limit(cls, create_limit: CreateLimit, id: int):
+        return cls(
+            category=create_limit.category,
+            value=create_limit.value,
+            user_id=create_limit.user_id,
+            id=id
+        )
     
 
 class GigaChatAnswer(BaseModel):
