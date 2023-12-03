@@ -21,8 +21,6 @@ import tensorflow_addons as tfa
 from sklearn.preprocessing import StandardScaler
 
 
-nltk.download('stopwords')
-
 nlp_eng = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
 nlp_rus = spacy.load('ru_core_news_sm', disable=['ner', 'parser'])
 

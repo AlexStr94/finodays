@@ -6,6 +6,8 @@ COPY ./requirements.txt requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
+RUN python -c "import nltk; nltk.download('stopwords')"
+
 COPY ./backend /app
 
 COPY ./dockerization/prestart.sh /prestart.sh
