@@ -17,7 +17,6 @@ from keras.models import load_model
 import pickle
 
 import tensorflow_addons as tfa
-import tensorflow as tf
 
 from sklearn.preprocessing import StandardScaler
 
@@ -35,6 +34,9 @@ stop_words = stop_words_rus + stop_words_eng + ['каждый день',
                                                 'smart', 'spar', 'ашан']
 
 best_look_back = 22
+
+CATEGORIES = ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум',
+    'одежда', 'уборка', 'электроника', 'образование']
 
 
 def get_n_most_frequent_strings(strings: List[str], n: int = 3) -> List[str]:
@@ -92,8 +94,7 @@ class Categorizer:
         model = self.topic_model
         predictions = np.argmax(model(tokens), axis=1)
         dictionary = {
-            "topic": ['автозапчасти', 'видеоигры', 'напитки', 'продукты питания', 'закуски и приправы', 'аквариум',
-                      'одежда', 'уборка', 'электроника', 'образование'],
+            "topic": CATEGORIES,
             "label": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}
 
         topics = []

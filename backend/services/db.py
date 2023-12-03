@@ -29,6 +29,9 @@ class Repository:
     def create(self, *args, **kwargs):
         raise NotImplementedError
 
+    def create_or_update(self, *args, **kwargs):
+        raise NotImplementedError
+
     def update(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -127,12 +130,12 @@ class RepositoryDB(
             await db.refresh(db_obj)
             return db_obj
         raise exceptions.ObjectDoesNotExist
-    
+
     async def delete(self, db: AsyncSession, obj: ModelType):
         statement = delete(self._model).where(self._model.id == obj.id)
         await db.execute(statement)
         await db.commit()
-        
+
 
 class RepositoryUser(RepositoryDB[models.User, schemas.User, schemas.User]):
     async def get(self, db: AsyncSession, gosuslugi_id: str) -> models.User:
@@ -312,9 +315,43 @@ class RepositoryTransaction(
         return lst
 
 
+class RepositoryCategoryLimit(
+    RepositoryDB[models.CategotyLimit,
+                 schemas.CreateLimit, schemas.UpdateLimit]
+):
+    async def create_or_update(
+        self,
+        db: AsyncSession,
+        obj_in: schemas.CreateLimit
+    ) -> models.CategotyLimit:
+        try:
+            obj = await self.create(
+                db=db,
+                obj_in=obj_in
+            )
+        except IntegrityError as e:
+            await db.rollback()
+            obj = await self.get(
+                db=db,
+                user_id=obj_in.user_id,
+                category=obj_in.category
+            )
+
+            update_obj = schemas.UpdateLimit.create_from_create_limit(
+                create_limit=obj_in, id=obj.id
+            )
+
+            obj = await self.update(
+                db=db,
+                obj_in=update_obj
+            )
+        return obj
+
+
 user_crud = RepositoryUser(models.User)
 account_crud = RepositoryAccount(models.Account)
 card_crud = RepositoryCard(models.Card)
 cashback_crud = RepositoryCashback(models.Cashback)
 user_cashback_crud = RepositoryUserCashback(models.UserCashback)
 transaction_crud = RepositoryTransaction(models.Transaction)
+category_limit_crud = RepositoryCategoryLimit(models.CategotyLimit)

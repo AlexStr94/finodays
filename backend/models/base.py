@@ -15,6 +15,7 @@ class User(Base):
     gosuslugi_id = Column(String(16), unique=True)
     ebs = Column(Boolean)
     accounts = relationship('Account', back_populates='user')
+    limits = relationship('CategotyLimit', back_populates='user')
 
 
 class Account(Base):
@@ -80,3 +81,18 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
     account = relationship('Account', back_populates='transactions', cascade='delete, merge, save-update')
     category = Column(String(100), nullable=True)
+
+
+class CategotyLimit(Base):
+    __tablename__ = 'limits'
+    __mapper_args__ = {"eager_defaults": True}
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user = relationship('User', back_populates='limits')
+    category = Column(String(100), nullable=False)
+    value = Column(Integer, nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            'user_id', 'category'
+        ),
+    )

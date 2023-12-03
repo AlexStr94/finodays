@@ -14,13 +14,14 @@ from schemas import base as schemas
 from services.auth import (ACCESS_TOKEN_EXPIRE_DAYS, create_access_token,
                            get_current_user)
 from services.cashback import can_choose_cashback, get_card_choose_cashback
-from services.db import (account_crud, cashback_crud, user_cashback_crud,
-                         user_crud)
+from services.db import (account_crud, category_limit_crud, cashback_crud,
+                         user_cashback_crud, user_crud)
 from services.external_integrations import (authenticate_user,
                                             create_or_update_accounts_in_db,
                                             get_account_cashbacks,
                                             get_accounts, get_user_by_photo,
                                             update_user_transactions)
+from services.gigachat import financial_analyst
 from services.validation import validate_photo
 
 
@@ -37,10 +38,11 @@ async def terminal(
     db: AsyncSession = Depends(get_session)
 ) -> schemas.TerminalResponse:
     photo: bytes = await file_in.read()
-    photo_validation = True # await asyncio.to_thread(validate_photo, image=photo)
+    # await asyncio.to_thread(validate_photo, image=photo)
+    photo_validation = True
     if not photo_validation:
         raise auth_exceptions.AntiSpoofingException()
-    
+
     user_info: schemas.User = await get_user_by_photo(photo, file_in.filename)
 
     if user_info:
@@ -55,7 +57,7 @@ async def terminal(
 
             for account in accounts:
                 # Условие ниже нужно только для демонстрации на
-                # стенде. В боевом варианте должно отрабатывать только 
+                # стенде. В боевом варианте должно отрабатывать только
                 # выражение в else
                 if account.bank == 'Центр-инвест':
                     account_cashbacks = schemas.RawAccountCashbacks(
@@ -290,13 +292,14 @@ async def choose_card_cashback(
         month = date(year=month.year, month=month.month, day=1)
 
         try:
-            # При получении сортируем по product_type, т.к. 
+            # При получении сортируем по product_type, т.к.
             # ответ может приходить в другом порядке
             cashbacks: List[models.Cashback] = await cashback_crud.bulk_get(
                 db=db, cashbacks=month_cashback.cashback
             )
 
-            month_cashbacks = list(sorted(month_cashback.cashback, key=lambda x: x.product_type))
+            month_cashbacks = list(
+                sorted(month_cashback.cashback, key=lambda x: x.product_type))
             cashbacks_data = zip(month_cashbacks, cashbacks)
             # слабое место
             user_cashbacks = [
@@ -364,6 +367,71 @@ async def get_category(transaction: schemas.TransactionName):
 
 
 @router.get(
+    '/giga_chat/',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.GigaChatAnswer
+)
+async def giga_chat(
+    promt: int,
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session),
+):
+    if promt == 1:
+        answer = await financial_analyst.limit_analysis(
+            db=db, user_id=current_user.id
+        )
+        if not answer:
+            answer = 'Вы не установили лимиты'
+    elif promt == 2:
+        answer = await financial_analyst.spendings_analysis(
+            db=db, user_id=current_user.id
+        )
+        if not answer:
+            answer = 'У вас не было трат в этом месяце'
+
+    return schemas.GigaChatAnswer(
+        answer=answer
+    )
+
+
+@router.post(
+    '/set_limit/',
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.Limit
+)
+async def set_limit(
+    raw_limit: schemas.RawLimit,
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session)
+):
+    limit = await category_limit_crud.create_or_update(
+        db=db, obj_in=schemas.CreateLimit.create_from_raw_limit(
+            raw_limit=raw_limit, user_id=current_user.id
+        )
+    )
+
+    return schemas.Limit.from_orm(limit)
+
+
+@router.get(
+    '/limits/',
+    status_code=status.HTTP_200_OK,
+    response_model=List[schemas.RawLimit]
+)
+async def limits(
+    current_user: Annotated[schemas.FullUser, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_session)
+):
+    limits = await category_limit_crud.filter_by(
+        db=db, user_id=current_user.id
+    )
+    return [
+        schemas.Limit.from_orm(limit)
+        for limit in limits
+    ]
+
+
+@router.get(
     '/log_out/',
     status_code=status.HTTP_200_OK
 )
@@ -389,4 +457,3 @@ async def log_out(
             )
 
     return {'message': 'ok'}
-    
